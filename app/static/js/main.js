@@ -338,7 +338,6 @@ function renderLibrary() {
                 <div class="card-tile-header">
                     <div>
                         <h3 class="card-title">${escapeHtml(item.name)}</h3>
-                        <div class="card-file">${escapeHtml(item.fileName)}</div>
                     </div>
                 </div>
                 <div class="card-summary">${escapeHtml(summarizeCard(item.card))}</div>

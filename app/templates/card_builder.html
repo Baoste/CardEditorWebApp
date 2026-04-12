@@ -13,8 +13,8 @@
             <a class="secondary-link-button" href="{{ url_for('main.index') }}">返回卡组页</a>
         </div>
         <p class="server-panel-copy">
-            这个页面先支持直接编辑原始 JSON 并保存到 <code>data/cards/</code>。
-            你把卡牌结构告诉我后，我会把它升级成专门的结构化编辑器。
+            这个页面按 Unity 的 Card Editor 结构组织：基础信息、Effects、校验和 JSON 面板。
+            文件名会根据 <code>card.id</code> 自动生成成 <code>card_&lt;id&gt;.json</code>。
         </p>
     </section>
 
@@ -40,6 +40,11 @@
                 <div id="builder-status" class="status-message">等待操作</div>
             </div>
 
+            <div class="builder-toolbar">
+                <button id="builder-new-button" class="secondary-button" type="button">新建</button>
+                <button id="builder-save-button" class="primary-button" type="button">保存到 data/cards</button>
+            </div>
+
             <div class="builder-form-row">
                 <label class="editor-field">
                     <span>文件名</span>
@@ -47,16 +52,20 @@
                 </label>
             </div>
 
-            <div class="builder-actions">
-                <button id="builder-new-button" class="secondary-button" type="button">新建空白卡</button>
-                <button id="builder-format-button" class="secondary-button" type="button">格式化 JSON</button>
-                <button id="builder-save-button" class="primary-button" type="button">保存到 data/cards</button>
-            </div>
+            <div id="builder-structured-editor" class="builder-structured-editor"></div>
 
-            <label class="editor-field builder-textarea-field">
-                <span>卡牌 JSON</span>
+            <section class="builder-json-panel">
+                <div class="panel-header builder-inline-header">
+                    <div>
+                        <p class="panel-kicker">JSON</p>
+                        <h2>JSON Panel</h2>
+                    </div>
+                    <div class="builder-toolbar">
+                        <button id="builder-refresh-json-button" class="secondary-button" type="button">刷新 JSON</button>
+                    </div>
+                </div>
                 <textarea id="builder-json-editor" class="builder-json-editor" spellcheck="false"></textarea>
-            </label>
+            </section>
         </section>
     </section>
 </main>
