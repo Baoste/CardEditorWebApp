@@ -1,5 +1,6 @@
 import json
 import os
+from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
 
@@ -41,11 +42,25 @@ def dump_json_text(payload):
 
 
 def build_deck_document(cards):
-    return {"cards": cards}
+    return {"cards": normalize_deck_cards(cards)}
 
 
 def write_deck_file(path: Path, cards):
     write_json_file(path, build_deck_document(cards))
+
+
+def extract_card_core(card):
+    if isinstance(card, dict) and isinstance(card.get("card"), dict):
+        return deepcopy(card["card"])
+
+    if isinstance(card, dict):
+        return deepcopy(card)
+
+    raise ValueError("Card data must be a JSON object.")
+
+
+def normalize_deck_cards(cards):
+    return [extract_card_core(card) for card in cards]
 
 
 def load_deck():
@@ -53,10 +68,10 @@ def load_deck():
     deck_document = read_json_file(DECK_FILE)
 
     if isinstance(deck_document, list):
-        return deck_document
+        return normalize_deck_cards(deck_document)
 
     if isinstance(deck_document, dict) and isinstance(deck_document.get("cards"), list):
-        return deck_document["cards"]
+        return normalize_deck_cards(deck_document["cards"])
 
     raise ValueError('SkillCardDeck.json must contain {"cards": [...]}')
 
@@ -205,10 +220,10 @@ def add_card_to_deck():
             return jsonify({"error": f"Card file not found: {file_name}"}), 404
 
         deck = load_deck()
-        deck.append(selected_card["card"])
+        deck.append(extract_card_core(selected_card["card"]))
         write_deck_file(DECK_FILE, deck)
 
-        return jsonify({"deck": deck, "addedCard": selected_card["card"]})
+        return jsonify({"deck": deck, "addedCard": deck[-1]})
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error)}), 500
 
