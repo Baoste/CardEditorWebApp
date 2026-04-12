@@ -81,6 +81,12 @@ const builderState = {
         pending: true,
         completed: true,
     },
+    flowPanelOpen: false,
+    drawflowEditor: null,
+    drawflowReady: false,
+    currentFlow: null,
+    selectedFlowNodeId: "",
+    selectedFlowEdgeId: "",
 };
 
 const builderElements = {
@@ -92,6 +98,22 @@ const builderElements = {
     fileName: document.getElementById("builder-file-name"),
     completionLabel: document.getElementById("builder-completion-label"),
     completionToggle: document.getElementById("builder-completion-toggle"),
+    flowShell: document.getElementById("builder-flow-shell"),
+    flowToggle: document.getElementById("builder-flow-toggle"),
+    flowStatus: document.getElementById("builder-flow-status"),
+    flowFileLabel: document.getElementById("builder-flow-file-label"),
+    flowModeLabel: document.getElementById("builder-flow-mode-label"),
+    flowCanvas: document.getElementById("builder-flow-canvas"),
+    flowDrawflow: document.getElementById("builder-flow-drawflow"),
+    flowEmpty: document.getElementById("builder-flow-empty"),
+    flowInspectorBody: document.getElementById("builder-flow-inspector-body"),
+    flowAddActionButton: document.getElementById("builder-flow-add-action"),
+    flowAddDecisionButton: document.getElementById("builder-flow-add-decision"),
+    flowConnectButton: document.getElementById("builder-flow-connect"),
+    flowDeleteButton: document.getElementById("builder-flow-delete"),
+    flowClearButton: document.getElementById("builder-flow-clear"),
+    flowReloadButton: document.getElementById("builder-flow-reload"),
+    flowSaveButton: document.getElementById("builder-flow-save"),
     structuredEditor: document.getElementById("builder-structured-editor"),
     jsonEditor: document.getElementById("builder-json-editor"),
     newButton: document.getElementById("builder-new-button"),
@@ -103,6 +125,12 @@ function builderSetStatus(message, isError = false) {
     builderElements.status.textContent = message;
     builderElements.status.style.background = isError ? "rgba(176, 58, 46, 0.12)" : "rgba(44, 122, 88, 0.12)";
     builderElements.status.style.color = isError ? "#a13329" : "#2c7a58";
+}
+
+function setFlowStatus(message, isError = false) {
+    builderElements.flowStatus.textContent = message;
+    builderElements.flowStatus.style.background = isError ? "rgba(176, 58, 46, 0.12)" : "rgba(44, 122, 88, 0.12)";
+    builderElements.flowStatus.style.color = isError ? "#a13329" : "#2c7a58";
 }
 
 function getCurrentCardId() {
@@ -336,6 +364,383 @@ function syncCompletionPanel() {
     builderElements.completionToggle.dataset.completed = String(isCompleted);
 }
 
+function createEmptyFlow(cardId = 0) {
+    return {
+        cardId: Number(cardId) > 0 ? Number(cardId) : 0,
+        engine: "drawflow",
+        drawflow: {
+            drawflow: {
+                Home: {
+                    data: {},
+                },
+            },
+        },
+    };
+}
+
+function getCurrentFlowCardId() {
+    const cardId = getCurrentCardId();
+    return cardId && cardId > 0 ? cardId : 0;
+}
+
+function sanitizeFlowDocument(flow, cardIdHint = 0) {
+    const input = isPlainObject(flow) ? clone(flow) : {};
+    const cardId = Number(input.cardId ?? cardIdHint ?? 0);
+    const drawflow = isPlainObject(input.drawflow) ? clone(input.drawflow) : createEmptyFlow(cardId).drawflow;
+    if (!isPlainObject(drawflow.drawflow)) {
+        drawflow.drawflow = { Home: { data: {} } };
+    }
+    if (!isPlainObject(drawflow.drawflow.Home)) {
+        drawflow.drawflow.Home = { data: {} };
+    }
+    if (!isPlainObject(drawflow.drawflow.Home.data)) {
+        drawflow.drawflow.Home.data = {};
+    }
+
+    return {
+        cardId: cardId > 0 ? cardId : 0,
+        engine: "drawflow",
+        drawflow,
+    };
+}
+
+function getFlowPathLabel(cardId) {
+    return cardId > 0 ? `data/card_flows/card_flow_${cardId}.json` : "请先设置有效卡牌 ID";
+}
+
+function getDrawflowData() {
+    return builderState.currentFlow?.drawflow?.drawflow?.Home?.data || {};
+}
+
+function getFlowNodeById(nodeId) {
+    return getDrawflowData()[String(nodeId)] || null;
+}
+
+function getFlowSelectedNodes() {
+    return Array.from(builderElements.flowDrawflow.querySelectorAll(".drawflow-node.selected"));
+}
+
+function resetFlowSelection() {
+    builderState.selectedFlowNodeId = "";
+    builderState.selectedFlowEdgeId = "";
+}
+
+function syncFlowMeta() {
+    const cardId = getCurrentFlowCardId();
+    builderElements.flowFileLabel.textContent = getFlowPathLabel(cardId);
+
+    if (builderState.selectedFlowNodeId) {
+        builderElements.flowModeLabel.textContent = `模式: 已选中节点 ${builderState.selectedFlowNodeId}`;
+    } else if (builderState.selectedFlowEdgeId) {
+        builderElements.flowModeLabel.textContent = "模式: 连线编辑中";
+    } else {
+        builderElements.flowModeLabel.textContent = "模式: 浏览";
+    }
+}
+
+function setFlowPanelOpen(open) {
+    builderState.flowPanelOpen = Boolean(open);
+    builderElements.flowShell.classList.toggle("is-collapsed", !builderState.flowPanelOpen);
+    builderElements.flowToggle.textContent = builderState.flowPanelOpen ? "隐藏流程图" : "显示流程图";
+    builderElements.flowToggle.setAttribute("aria-expanded", builderState.flowPanelOpen ? "true" : "false");
+}
+
+function renderFlowInspector() {
+    const selectedNode = getFlowNodeById(builderState.selectedFlowNodeId);
+
+    if (!selectedNode) {
+        builderElements.flowInspectorBody.innerHTML = `
+            <div>当前没有选中节点。</div>
+            <div>在 Drawflow 中可直接拖拽节点、拖动连线，并用节点内部输入框修改标题。</div>
+        `;
+        return;
+    }
+
+    const customId = selectedNode.data?.customId || selectedNode.id;
+    const label = selectedNode.data?.label || "";
+    const kind = selectedNode.data?.kind === "decision" ? "判断" : "方框";
+    builderElements.flowInspectorBody.innerHTML = `
+        <div class="builder-flow-inspector-grid">
+            <label class="editor-field">
+                <span>节点 ID</span>
+                <input type="text" value="${escapeHtml(String(customId))}" readonly>
+            </label>
+            <label class="editor-field">
+                <span>节点类型</span>
+                <input type="text" value="${escapeHtml(kind)}" readonly>
+            </label>
+            <label class="editor-field">
+                <span>X</span>
+                <input type="number" value="${escapeHtml(selectedNode.pos_x ?? 0)}" readonly>
+            </label>
+            <label class="editor-field">
+                <span>Y</span>
+                <input type="number" value="${escapeHtml(selectedNode.pos_y ?? 0)}" readonly>
+            </label>
+        </div>
+        <label class="editor-field editor-field-wide">
+            <span>标题</span>
+            <input type="text" data-flow-bind="node.label" value="${escapeHtml(label)}">
+        </label>
+    `;
+}
+
+function getFlowNodeHtml(kind, label) {
+    const kindLabel = kind === "decision" ? "判断" : "方框";
+    return `
+        <div class="builder-drawflow-card ${kind === "decision" ? "is-decision" : "is-action"}">
+            <div class="builder-drawflow-card-kind">${kindLabel}</div>
+            <input class="builder-drawflow-card-input" type="text" df-label value="${escapeHtml(label)}" placeholder="${kindLabel}">
+        </div>
+    `;
+}
+
+function ensureDrawflowEditor() {
+    if (builderState.drawflowReady) {
+        return builderState.drawflowEditor;
+    }
+    if (!window.Drawflow || !builderElements.flowDrawflow) {
+        return null;
+    }
+
+    const editor = new window.Drawflow(builderElements.flowDrawflow);
+    editor.reroute = true;
+    editor.editor_mode = "edit";
+    editor.start();
+    editor.zoom = 1;
+    editor.precanvas.style.minWidth = "1400px";
+    editor.precanvas.style.minHeight = "900px";
+
+    editor.on("nodeSelected", (id) => {
+        builderState.currentFlow = exportFlowFromEditor();
+        builderState.selectedFlowNodeId = String(id);
+        renderFlowInspector();
+        syncFlowMeta();
+    });
+    editor.on("nodeUnselected", () => {
+        builderState.currentFlow = exportFlowFromEditor();
+        builderState.selectedFlowNodeId = "";
+        renderFlowInspector();
+        syncFlowMeta();
+    });
+    editor.on("nodeRemoved", () => {
+        builderState.currentFlow = exportFlowFromEditor();
+        builderState.selectedFlowNodeId = "";
+        renderFlowInspector();
+        syncFlowMeta();
+        updateFlowEmptyState();
+    });
+    editor.on("connectionCreated", () => {
+        builderState.currentFlow = exportFlowFromEditor();
+        builderState.selectedFlowEdgeId = "";
+        syncFlowMeta();
+        updateFlowEmptyState();
+        setFlowStatus("已创建连线");
+    });
+    editor.on("connectionRemoved", () => {
+        builderState.currentFlow = exportFlowFromEditor();
+        syncFlowMeta();
+        updateFlowEmptyState();
+        setFlowStatus("已移除连线");
+    });
+    editor.on("nodeCreated", () => {
+        builderState.currentFlow = exportFlowFromEditor();
+        updateFlowEmptyState();
+    });
+    editor.on("nodeMoved", () => {
+        builderState.currentFlow = exportFlowFromEditor();
+        renderFlowInspector();
+    });
+
+    builderState.drawflowEditor = editor;
+    builderState.drawflowReady = true;
+    return editor;
+}
+
+function updateFlowEmptyState() {
+    const data = getDrawflowData();
+    builderElements.flowEmpty.style.display = Object.keys(data).length ? "none" : "block";
+}
+
+function importFlowToEditor() {
+    const editor = ensureDrawflowEditor();
+    if (!editor) {
+        setFlowStatus("Drawflow 资源未加载", true);
+        return;
+    }
+    const flow = sanitizeFlowDocument(builderState.currentFlow, getCurrentFlowCardId());
+    builderState.currentFlow = flow;
+    editor.clear();
+    editor.import(clone(flow.drawflow));
+    builderState.selectedFlowNodeId = "";
+    builderState.selectedFlowEdgeId = "";
+    updateFlowEmptyState();
+    syncFlowMeta();
+    renderFlowInspector();
+}
+
+function exportFlowFromEditor() {
+    const editor = ensureDrawflowEditor();
+    if (!editor) {
+        return createEmptyFlow(getCurrentFlowCardId());
+    }
+    const exported = editor.export();
+    return sanitizeFlowDocument(
+        {
+            cardId: getCurrentFlowCardId(),
+            engine: "drawflow",
+            drawflow: exported,
+        },
+        getCurrentFlowCardId(),
+    );
+}
+
+function renderFlowEditor() {
+    syncFlowMeta();
+    builderElements.flowConnectButton.disabled = true;
+    builderElements.flowDeleteButton.disabled = !builderState.selectedFlowNodeId;
+    builderElements.flowSaveButton.disabled = getCurrentFlowCardId() <= 0;
+    builderElements.flowReloadButton.disabled = getCurrentFlowCardId() <= 0;
+    builderElements.flowClearButton.disabled = !Object.keys(getDrawflowData()).length;
+    updateFlowEmptyState();
+    renderFlowInspector();
+}
+
+async function loadFlowForCurrentCard() {
+    const cardId = getCurrentFlowCardId();
+    resetFlowSelection();
+
+    if (cardId <= 0) {
+        builderState.currentFlow = createEmptyFlow(0);
+        setFlowStatus("请先设置卡牌 ID");
+        renderFlowEditor();
+        return;
+    }
+
+    setFlowStatus(`正在读取卡牌 ${cardId} 的流程图...`);
+    try {
+        const response = await requestJson(`/api/card-flow?cardId=${cardId}`);
+        if (getCurrentFlowCardId() !== cardId) {
+            return;
+        }
+        builderState.currentFlow = sanitizeFlowDocument(response.flow, cardId);
+        setFlowStatus(`流程图已载入: ${getFlowPathLabel(cardId)}`);
+        importFlowToEditor();
+        renderFlowEditor();
+    } catch (error) {
+        if (getCurrentFlowCardId() !== cardId) {
+            return;
+        }
+        builderState.currentFlow = createEmptyFlow(cardId);
+        setFlowStatus(error.message, true);
+        importFlowToEditor();
+        renderFlowEditor();
+    }
+}
+
+async function saveCurrentFlow(flowOverride = null) {
+    const cardId = getCurrentFlowCardId();
+    if (cardId <= 0) {
+        setFlowStatus("请先设置有效卡牌 ID，再保存流程图。", true);
+        return false;
+    }
+
+    setFlowStatus(`正在保存卡牌 ${cardId} 的流程图...`);
+    try {
+        builderState.currentFlow = flowOverride
+            ? sanitizeFlowDocument(flowOverride, cardId)
+            : exportFlowFromEditor();
+        const response = await requestJson("/api/card-flow", {
+            method: "POST",
+            body: JSON.stringify({
+                cardId,
+                flow: builderState.currentFlow,
+            }),
+        });
+        builderState.currentFlow = sanitizeFlowDocument(response.flow, cardId);
+        setFlowStatus(`流程图已保存到 ${response.path}`);
+        importFlowToEditor();
+        renderFlowEditor();
+        return true;
+    } catch (error) {
+        setFlowStatus(error.message, true);
+        return false;
+    }
+}
+
+function syncFlowCardIdFromDocument() {
+    if (!builderState.currentFlow) {
+        builderState.currentFlow = createEmptyFlow(getCurrentFlowCardId());
+    } else {
+        builderState.currentFlow.cardId = getCurrentFlowCardId();
+    }
+    renderFlowEditor();
+}
+
+function addFlowNode(type) {
+    const editor = ensureDrawflowEditor();
+    if (!editor) {
+        setFlowStatus("Drawflow 资源未加载", true);
+        return;
+    }
+    const isDecision = type === "decision";
+    const customId = `${type}_${Date.now()}`;
+    const data = {
+        label: isDecision ? "判断" : "步骤",
+        kind: type,
+        customId,
+    };
+    const posX = 90 + Object.keys(getDrawflowData()).length * 40;
+    const posY = 90 + Object.keys(getDrawflowData()).length * 30;
+    const drawflowId = editor.addNode(
+        type,
+        1,
+        isDecision ? 2 : 1,
+        posX,
+        posY,
+        isDecision ? "builder-drawflow-decision" : "builder-drawflow-action",
+        data,
+        getFlowNodeHtml(type, data.label),
+    );
+    builderState.selectedFlowNodeId = String(drawflowId);
+    editor.selectNodeId(String(drawflowId));
+    builderState.currentFlow = exportFlowFromEditor();
+    renderFlowEditor();
+}
+
+function addFlowEdge(sourceId, targetId) {
+    void sourceId;
+    void targetId;
+}
+
+function deleteSelectedFlowItem() {
+    const editor = ensureDrawflowEditor();
+    if (!editor || !builderState.selectedFlowNodeId) {
+        return;
+    }
+    editor.removeNodeId(`node-${builderState.selectedFlowNodeId}`);
+    builderState.currentFlow = exportFlowFromEditor();
+    builderState.selectedFlowNodeId = "";
+    renderFlowEditor();
+    setFlowStatus("已删除当前选中内容");
+}
+
+function clearCurrentFlow() {
+    const editor = ensureDrawflowEditor();
+    if (!editor) {
+        return;
+    }
+    if (!window.confirm("确认清空当前卡牌的流程图吗？")) {
+        return;
+    }
+    builderState.currentFlow = createEmptyFlow(getCurrentFlowCardId());
+    resetFlowSelection();
+    editor.clear();
+    importFlowToEditor();
+    renderFlowEditor();
+    setFlowStatus("当前流程图已清空");
+}
+
 async function requestJson(url, options = {}) {
     const response = await fetch(url, {
         headers: { "Content-Type": "application/json" },
@@ -522,7 +927,8 @@ function renderStructuredEditor() {
         </section>`;
 }
 
-function setCurrentDocument(document, fileName = "") {
+function setCurrentDocument(document, fileName = "", options = {}) {
+    const { reloadFlow = true } = options;
     builderState.currentDocument = ensureDocument(document);
     builderState.selectedFileName = fileName;
     builderState.effectFoldouts = [];
@@ -533,6 +939,9 @@ function setCurrentDocument(document, fileName = "") {
     builderElements.jsonEditor.value = formatJson(builderState.currentDocument);
     renderStructuredEditor();
     renderBuilderCardList();
+    if (reloadFlow) {
+        loadFlowForCurrentCard();
+    }
 }
 
 function renderCardGroup(title, items, emptyCopy) {
@@ -614,12 +1023,13 @@ async function loadCardFile(fileName) {
     }
 }
 
-async function saveCurrentCard() {
+async function saveCurrentCard(options = {}) {
+    const { reloadFlow = true } = options;
     try {
         builderElements.fileName.value = getGeneratedFileNameFromDocument(builderState.currentDocument);
     } catch (error) {
         builderSetStatus(error.message, true);
-        return;
+        return null;
     }
     builderSetStatus(`正在保存 ${builderElements.fileName.value} ...`);
     try {
@@ -628,10 +1038,36 @@ async function saveCurrentCard() {
             body: JSON.stringify({ currentFileName: builderState.selectedFileName, document: builderState.currentDocument }),
         });
         await loadCards();
-        setCurrentDocument(response.card.card, response.card.fileName);
+        setCurrentDocument(response.card.card, response.card.fileName, { reloadFlow });
         builderSetStatus(`${response.card.fileName} 已保存到 data/cards`);
+        return response.card;
     } catch (error) {
         builderSetStatus(error.message, true);
+        return null;
+    }
+}
+
+async function saveCardAndFlow() {
+    const flowSnapshot = exportFlowFromEditor();
+    const savedCard = await saveCurrentCard({ reloadFlow: false });
+    if (!savedCard) {
+        return;
+    }
+
+    const targetCardId = getCurrentFlowCardId();
+    const flowToSave = sanitizeFlowDocument(
+        {
+            ...flowSnapshot,
+            cardId: targetCardId,
+        },
+        targetCardId,
+    );
+    builderState.currentFlow = flowToSave;
+    importFlowToEditor();
+
+    const flowSaved = await saveCurrentFlow(flowToSave);
+    if (flowSaved) {
+        builderSetStatus(`${savedCard.fileName} 和流程图已一起保存`);
     }
 }
 
@@ -752,6 +1188,10 @@ builderElements.structuredEditor.addEventListener("input", (event) => {
     }
     setByPath(builderState.currentDocument, bindPath, value);
     syncFileName();
+    if (bindPath === "card.id") {
+        syncCompletionPanel();
+        syncFlowCardIdFromDocument();
+    }
     builderElements.jsonEditor.value = formatJson(builderState.currentDocument);
 });
 
@@ -764,6 +1204,10 @@ builderElements.structuredEditor.addEventListener("change", (event) => {
             if (Number.isNaN(value)) value = 0;
         }
         setByPath(builderState.currentDocument, event.target.dataset.bind, value);
+        if (event.target.dataset.bind === "card.id") {
+            syncCompletionPanel();
+            syncFlowCardIdFromDocument();
+        }
         if (String(event.target.dataset.bind).endsWith(".participantType")) {
             renderStructuredEditor();
         }
@@ -795,6 +1239,24 @@ builderElements.search.addEventListener("input", (event) => {
     renderBuilderCardList();
 });
 
+builderElements.flowInspectorBody.addEventListener("input", (event) => {
+    const bind = event.target.dataset.flowBind;
+    if (!bind || !builderState.currentFlow) {
+        return;
+    }
+    const selectedNode = getFlowNodeById(builderState.selectedFlowNodeId);
+    if (bind === "node.label" && selectedNode) {
+        selectedNode.data = selectedNode.data || {};
+        selectedNode.data.label = event.target.value;
+        const input = builderElements.flowDrawflow.querySelector(`#node-${builderState.selectedFlowNodeId} [df-label]`);
+        if (input) {
+            input.value = event.target.value;
+        }
+        builderState.currentFlow = exportFlowFromEditor();
+        renderFlowInspector();
+    }
+});
+
 builderElements.reloadButton.addEventListener("click", () => loadCards());
 builderElements.newButton.addEventListener("click", () => {
     setCurrentDocument(createEmptyDocument(), "");
@@ -808,11 +1270,39 @@ builderElements.completionToggle.addEventListener("click", () => {
     }
     updateCardCompletion(cardId, builderElements.completionToggle.dataset.completed !== "true");
 });
-builderElements.saveButton.addEventListener("click", () => saveCurrentCard());
+builderElements.saveButton.addEventListener("click", () => saveCardAndFlow());
 builderElements.refreshJsonButton.addEventListener("click", () => {
     builderElements.jsonEditor.value = formatJson(builderState.currentDocument);
     builderSetStatus("JSON 已刷新");
 });
+builderElements.flowAddActionButton.addEventListener("click", () => {
+    addFlowNode("action");
+    setFlowStatus("已添加方框节点");
+});
+builderElements.flowAddDecisionButton.addEventListener("click", () => {
+    addFlowNode("decision");
+    setFlowStatus("已添加判断节点");
+});
+builderElements.flowConnectButton.addEventListener("click", () => {
+    setFlowStatus("Drawflow 使用原生交互连线：从节点右侧输出端拖到目标节点左侧输入端。");
+});
+builderElements.flowDeleteButton.addEventListener("click", () => {
+    deleteSelectedFlowItem();
+});
+builderElements.flowClearButton.addEventListener("click", () => {
+    clearCurrentFlow();
+});
+builderElements.flowReloadButton.addEventListener("click", () => {
+    loadFlowForCurrentCard();
+});
+builderElements.flowSaveButton.addEventListener("click", () => {
+    saveCurrentFlow();
+});
 
+builderElements.flowToggle.addEventListener("click", () => {
+    setFlowPanelOpen(!builderState.flowPanelOpen);
+});
+
+setFlowPanelOpen(false);
 setCurrentDocument(createEmptyDocument(), "");
 loadCards();

@@ -13,8 +13,10 @@ main_bp = Blueprint("main", __name__)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 CARDS_DIR = DATA_DIR / "cards"
+CARD_FLOW_DIR = DATA_DIR / "card_flows"
 DECK_FILE = DATA_DIR / "SkillCardDeck.json"
 CARD_COMPLETION_FILE = DATA_DIR / "CardCompletionStatus.json"
+CARD_FLOW_FILE_PREFIX = "card_flow_"
 GAME_SERVER_DECK_PATH = os.environ.get(
     "CARD_GAME_SERVER_SKILL_CARDS_FILE",
     "/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/SkillCardsT.json",
@@ -27,6 +29,7 @@ RESTART_SCRIPT_PATH = os.environ.get(
 
 def ensure_data_files():
     CARDS_DIR.mkdir(parents=True, exist_ok=True)
+    CARD_FLOW_DIR.mkdir(parents=True, exist_ok=True)
     DECK_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     if not DECK_FILE.exists():
@@ -92,6 +95,142 @@ def load_card_completion_statuses():
 
 def write_card_completion_statuses(statuses):
     write_json_file(CARD_COMPLETION_FILE, statuses)
+
+
+def resolve_card_flow_path(card_id: int):
+    return CARD_FLOW_DIR / f"{CARD_FLOW_FILE_PREFIX}{int(card_id)}.json"
+
+
+def resolve_legacy_card_flow_path(card_id: int):
+    return DATA_DIR / f"{CARD_FLOW_FILE_PREFIX}{int(card_id)}.json"
+
+
+def build_default_card_flow(card_id: int):
+    return {
+        "cardId": int(card_id),
+        "engine": "drawflow",
+        "drawflow": {
+            "drawflow": {
+                "Home": {
+                    "data": {}
+                }
+            }
+        },
+    }
+
+
+def load_card_flow(card_id: int):
+    path = resolve_card_flow_path(card_id)
+    legacy_path = resolve_legacy_card_flow_path(card_id)
+    source_path = path if path.exists() else legacy_path
+
+    if not source_path.exists():
+        return build_default_card_flow(card_id)
+
+    flow_document = read_json_file(source_path)
+    if not isinstance(flow_document, dict):
+        raise ValueError("Card flow JSON must be an object.")
+
+    if source_path == legacy_path:
+        flow_document["cardId"] = int(card_id)
+        write_json_file(path, flow_document)
+        legacy_path.unlink()
+
+    return flow_document
+
+
+def normalize_card_flow_payload(payload, card_id: int):
+    if not isinstance(payload, dict):
+        raise ValueError("Flow document must be a JSON object.")
+
+    drawflow_document = payload.get("drawflow")
+    if isinstance(drawflow_document, dict):
+        return {
+            "cardId": int(card_id),
+            "engine": "drawflow",
+            "drawflow": drawflow_document,
+        }
+
+    nodes = payload.get("nodes", [])
+    edges = payload.get("edges", [])
+
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        raise ValueError("Flow document must contain nodes and edges arrays.")
+
+    normalized_nodes = []
+    normalized_edges = []
+    node_ids = set()
+
+    for index, node in enumerate(nodes):
+        if not isinstance(node, dict):
+            raise ValueError(f"nodes[{index}] must be an object.")
+
+        node_id = str(node.get("id", "")).strip()
+        if not node_id:
+            raise ValueError(f"nodes[{index}].id is required.")
+
+        node_type = str(node.get("type", "action")).strip()
+        if node_type not in ("action", "decision"):
+            raise ValueError(f"nodes[{index}].type must be action or decision.")
+
+        normalized_node = {
+            "id": node_id,
+            "type": node_type,
+            "label": str(node.get("label", "")).strip() or ("判断" if node_type == "decision" else "步骤"),
+            "x": int(node.get("x", 0)),
+            "y": int(node.get("y", 0)),
+        }
+        normalized_nodes.append(normalized_node)
+        node_ids.add(node_id)
+
+    for index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            raise ValueError(f"edges[{index}] must be an object.")
+
+        source = str(edge.get("source", "")).strip()
+        target = str(edge.get("target", "")).strip()
+        if not source or not target:
+            raise ValueError(f"edges[{index}] must contain source and target.")
+        if source not in node_ids or target not in node_ids:
+            raise ValueError(f"edges[{index}] references an unknown node.")
+
+        normalized_edges.append(
+            {
+                "id": str(edge.get("id", "")).strip() or f"edge_{index + 1}",
+                "source": source,
+                "target": target,
+                "label": str(edge.get("label", "")).strip(),
+            }
+        )
+
+    return {
+        "cardId": int(card_id),
+        "nodes": normalized_nodes,
+        "edges": normalized_edges,
+    }
+
+
+def migrate_card_flow_file(previous_card_id: int, new_card_id: int):
+    previous_path = resolve_card_flow_path(previous_card_id)
+    legacy_previous_path = resolve_legacy_card_flow_path(previous_card_id)
+    new_path = resolve_card_flow_path(new_card_id)
+
+    if previous_card_id == new_card_id:
+        return
+
+    source_path = previous_path if previous_path.exists() else legacy_previous_path
+    if not source_path.exists():
+        return
+
+    if new_path.exists():
+        source_path.unlink()
+        return
+
+    flow_document = load_card_flow(previous_card_id)
+    flow_document["cardId"] = int(new_card_id)
+    write_json_file(new_path, flow_document)
+    if source_path.exists():
+        source_path.unlink()
 
 
 def load_deck():
@@ -270,9 +409,19 @@ def delete_card_file():
         return jsonify({"error": f"Card file not found: {file_name}"}), 404
 
     try:
+        card_document = read_json_file(path)
+        card_id = int(extract_card_core(card_document)["id"])
         path.unlink()
+        flow_path = resolve_card_flow_path(card_id)
+        legacy_flow_path = resolve_legacy_card_flow_path(card_id)
+        if flow_path.exists():
+            flow_path.unlink()
+        if legacy_flow_path.exists():
+            legacy_flow_path.unlink()
         return jsonify({"deletedFileName": file_name})
     except OSError as error:
+        return jsonify({"error": str(error)}), 500
+    except (ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error)}), 500
 
 
@@ -320,6 +469,7 @@ def save_card_file():
             if previous_status is not None and str(new_card_id) not in completion_statuses:
                 completion_statuses[str(new_card_id)] = previous_status
             write_card_completion_statuses(completion_statuses)
+            migrate_card_flow_file(previous_card_id, new_card_id)
 
         if current_path is not None and current_path != target_path and current_path.exists():
             current_path.unlink()
@@ -366,6 +516,46 @@ def restart_server():
         ), 500
     except (OSError, subprocess.SubprocessError) as error:
         return jsonify({"error": str(error), "scriptPath": RESTART_SCRIPT_PATH}), 500
+
+
+@main_bp.get("/api/card-flow")
+def get_card_flow():
+    card_id = request.args.get("cardId")
+
+    try:
+        normalized_card_id = int(card_id)
+        if normalized_card_id <= 0:
+            return jsonify({"error": "cardId must be greater than 0."}), 400
+
+        return jsonify({"flow": load_card_flow(normalized_card_id)})
+    except (TypeError, ValueError):
+        return jsonify({"error": "cardId must be an integer."}), 400
+    except (OSError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error)}), 500
+
+
+@main_bp.post("/api/card-flow")
+def save_card_flow():
+    payload = request.get_json(silent=True) or {}
+    card_id = payload.get("cardId")
+    flow = payload.get("flow")
+
+    try:
+        normalized_card_id = int(card_id)
+        if normalized_card_id <= 0:
+            return jsonify({"error": "cardId must be greater than 0."}), 400
+
+        normalized_flow = normalize_card_flow_payload(flow, normalized_card_id)
+        path = resolve_card_flow_path(normalized_card_id)
+        legacy_path = resolve_legacy_card_flow_path(normalized_card_id)
+        write_json_file(path, normalized_flow)
+        if legacy_path.exists():
+            legacy_path.unlink()
+        return jsonify({"flow": normalized_flow, "path": str(path)})
+    except (TypeError, ValueError) as error:
+        return jsonify({"error": str(error)}), 400
+    except (OSError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error)}), 500
 
 
 @main_bp.get("/api/deck/chinese-chars")

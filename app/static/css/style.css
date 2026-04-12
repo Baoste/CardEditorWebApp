@@ -39,6 +39,10 @@ input {
     padding: 28px 0 36px;
 }
 
+.builder-page-shell {
+    width: min(1880px, calc(100% - 32px));
+}
+
 .server-panel {
     margin-bottom: 20px;
 }
@@ -115,6 +119,273 @@ input {
     gap: 10px;
     flex-wrap: wrap;
     margin-bottom: 16px;
+}
+
+.builder-editor-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 20px;
+    align-items: start;
+}
+
+.builder-editor-main {
+    min-width: 0;
+}
+
+.builder-flow-shell {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 520px);
+    gap: 12px;
+    align-items: start;
+}
+
+.builder-flow-shell.is-collapsed {
+    grid-template-columns: 44px 0;
+}
+
+.builder-flow-toggle {
+    min-height: 160px;
+    padding: 14px 10px;
+    border: 1px solid rgba(92, 60, 29, 0.12);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 244, 230, 0.96));
+    color: var(--text);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.builder-flow-panel {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    width: 520px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.54);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.builder-flow-shell.is-collapsed .builder-flow-panel {
+    width: 0;
+    padding: 0;
+    border-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateX(8px);
+}
+
+.builder-flow-toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.builder-flow-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border: 1px solid rgba(92, 60, 29, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.58);
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.builder-flow-hint {
+    padding: 10px 12px;
+    border: 1px dashed rgba(92, 60, 29, 0.16);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.5);
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.builder-flow-canvas {
+    position: relative;
+    min-height: 680px;
+    overflow: hidden;
+    border: 1px solid rgba(92, 60, 29, 0.12);
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at top left, rgba(181, 92, 43, 0.08), transparent 26%),
+        linear-gradient(rgba(92, 60, 29, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(92, 60, 29, 0.06) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(255, 246, 234, 0.96));
+    background-size: auto, 28px 28px, 28px 28px, auto;
+}
+
+.builder-flow-drawflow,
+.builder-flow-drawflow .drawflow {
+    width: 100%;
+    height: 100%;
+}
+
+.builder-flow-empty {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    z-index: 0;
+    max-width: 280px;
+    padding: 10px 12px;
+    border: 1px dashed rgba(92, 60, 29, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.builder-flow-drawflow .drawflow {
+    background: transparent;
+}
+
+.builder-flow-drawflow .parent-drawflow {
+    transform-origin: 0 0;
+}
+
+.builder-flow-drawflow .drawflow-node {
+    width: auto;
+    min-width: 160px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.builder-flow-drawflow .drawflow-node.selected .builder-drawflow-card {
+    box-shadow:
+        0 0 0 3px rgba(181, 92, 43, 0.18),
+        0 12px 28px rgba(92, 60, 29, 0.16);
+}
+
+.builder-flow-drawflow .drawflow_content_node {
+    padding: 0;
+    background: transparent;
+}
+
+.builder-flow-drawflow .drawflow-node .input,
+.builder-flow-drawflow .drawflow-node .output {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+    background: #fff7eb;
+    border-color: rgba(92, 60, 29, 0.28);
+}
+
+.builder-flow-drawflow .drawflow-node .output {
+    background: rgba(181, 92, 43, 0.18);
+}
+
+.builder-flow-drawflow .drawflow-node.builder-drawflow-action .inputs .input,
+.builder-flow-drawflow .drawflow-node.builder-drawflow-decision .inputs .input {
+    top: -7px;
+    right: auto;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.builder-flow-drawflow .drawflow-node.builder-drawflow-action .outputs .output {
+    top: auto;
+    right: auto;
+    bottom: -7px;
+    left: 50%;
+    transform: translate(-50%, 50%);
+}
+
+.builder-flow-drawflow .drawflow-node.builder-drawflow-decision .outputs .output {
+    top: auto;
+    bottom: -7px;
+    transform: translate(-50%, 50%);
+}
+
+.builder-flow-drawflow .drawflow-node.builder-drawflow-decision .outputs .output.output_1 {
+    right: auto;
+    left: 34%;
+}
+
+.builder-flow-drawflow .drawflow-node.builder-drawflow-decision .outputs .output.output_2 {
+    right: auto;
+    left: 66%;
+}
+
+.builder-flow-drawflow .connection .main-path {
+    stroke: rgba(92, 60, 29, 0.64);
+    stroke-width: 3px;
+}
+
+.builder-flow-drawflow .connection.selected .main-path {
+    stroke: var(--accent-strong);
+}
+
+.builder-drawflow-card {
+    width: 170px;
+    display: grid;
+    gap: 8px;
+    padding: 14px 14px 12px;
+    border: 1px solid rgba(92, 60, 29, 0.18);
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 246, 236, 0.98));
+    box-shadow: 0 10px 24px rgba(92, 60, 29, 0.12);
+}
+
+.builder-drawflow-card.is-decision {
+    width: 152px;
+    min-height: 152px;
+    padding: 26px 18px;
+    border-radius: 34px;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.builder-drawflow-card-kind {
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.builder-drawflow-card-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid rgba(92, 60, 29, 0.16);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.86);
+    color: var(--text);
+    text-align: center;
+}
+
+.builder-drawflow-card.is-decision .builder-drawflow-card-input {
+    border-radius: 10px;
+}
+
+.builder-flow-inspector {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid rgba(92, 60, 29, 0.12);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.62);
+}
+
+.builder-flow-inspector-header h3 {
+    margin: 0;
+    font-size: 0.98rem;
+}
+
+.builder-flow-inspector-body {
+    display: grid;
+    gap: 12px;
+    color: var(--muted);
+}
+
+.builder-flow-inspector-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .builder-file-bar {
@@ -969,6 +1240,9 @@ input {
 
     .builder-subgrid,
     .builder-nested-columns,
+    .builder-editor-split,
+    .builder-flow-shell,
+    .builder-flow-inspector-grid,
     .builder-participant-top,
     .builder-participant-bottom {
         grid-template-columns: 1fr;
@@ -982,6 +1256,17 @@ input {
     .builder-completion-panel {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .builder-flow-meta {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .builder-flow-toggle {
+        min-height: auto;
+        writing-mode: initial;
+        text-orientation: initial;
     }
 
     .search-input {
@@ -1007,6 +1292,10 @@ input {
     .builder-card-actions {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    .builder-flow-canvas {
+        min-height: 560px;
     }
 
     .panel,

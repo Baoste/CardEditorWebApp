@@ -2,8 +2,12 @@
 
 {% block title %}单卡制作页{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow@0.0.55/dist/drawflow.min.css">
+{% endblock %}
+
 {% block content %}
-<main class="page-shell">
+<main class="page-shell builder-page-shell">
     <section class="panel builder-page-header">
         <div class="panel-header">
             <div>
@@ -60,23 +64,75 @@
                 <button id="builder-completion-toggle" class="secondary-button builder-compact-button" type="button" disabled>选择卡牌后可切换</button>
             </section>
 
-            <div id="builder-structured-editor" class="builder-structured-editor"></div>
+            <div class="builder-editor-split">
+                <div class="builder-editor-main">
+                    <div id="builder-structured-editor" class="builder-structured-editor"></div>
 
-            <section class="builder-json-panel">
-                <div class="panel-header builder-inline-header">
-                    <div>
-                        <p class="panel-kicker">JSON</p>
-                        <h2>JSON Panel</h2>
-                    </div>
-                    <div class="builder-toolbar">
-                        <button id="builder-refresh-json-button" class="secondary-button" type="button">刷新 JSON</button>
-                    </div>
+                    <section class="builder-json-panel">
+                        <div class="panel-header builder-inline-header">
+                            <div>
+                                <p class="panel-kicker">JSON</p>
+                                <h2>JSON Panel</h2>
+                            </div>
+                            <div class="builder-toolbar">
+                                <button id="builder-refresh-json-button" class="secondary-button" type="button">刷新 JSON</button>
+                            </div>
+                        </div>
+                        <textarea id="builder-json-editor" class="builder-json-editor" spellcheck="false"></textarea>
+                    </section>
                 </div>
-                <textarea id="builder-json-editor" class="builder-json-editor" spellcheck="false"></textarea>
-            </section>
+
+                <div id="builder-flow-shell" class="builder-flow-shell is-collapsed">
+                    <button id="builder-flow-toggle" class="builder-flow-toggle" type="button" aria-expanded="false">显示流程图</button>
+
+                    <aside class="builder-flow-panel">
+                        <div class="panel-header builder-inline-header">
+                            <div>
+                                <p class="panel-kicker">流程图</p>
+                                <h2>卡牌流程图</h2>
+                            </div>
+                            <div id="builder-flow-status" class="status-message">等待载入</div>
+                        </div>
+
+                        <div class="builder-flow-toolbar">
+                            <button id="builder-flow-add-action" class="secondary-button builder-compact-button" type="button">添加方框</button>
+                            <button id="builder-flow-add-decision" class="secondary-button builder-compact-button" type="button">添加判断</button>
+                            <button id="builder-flow-connect" class="secondary-button builder-compact-button" type="button">准备连线</button>
+                            <button id="builder-flow-delete" class="secondary-button builder-compact-button" type="button">删除选中</button>
+                            <button id="builder-flow-clear" class="secondary-button builder-compact-button" type="button">清空流程图</button>
+                            <button id="builder-flow-reload" class="secondary-button builder-compact-button" type="button">重新读取</button>
+                            <button id="builder-flow-save" class="primary-button builder-compact-button" type="button">保存流程图</button>
+                        </div>
+
+                        <div class="builder-flow-meta">
+                        <div id="builder-flow-file-label">未选择卡牌</div>
+                        <div id="builder-flow-mode-label">模式: 浏览</div>
+                        </div>
+
+                        <div class="builder-flow-hint">
+                            使用 Drawflow 原生交互：拖拽节点移动，从节点下方输出拖到目标节点上方输入即可连线。
+                        </div>
+
+                        <div id="builder-flow-canvas" class="builder-flow-canvas">
+                            <div id="builder-flow-drawflow" class="builder-flow-drawflow"></div>
+                            <div id="builder-flow-empty" class="builder-flow-empty">选择或新建一张卡牌后，就可以在这里制作流程图。</div>
+                        </div>
+
+                        <section class="builder-flow-inspector">
+                            <div class="builder-flow-inspector-header">
+                                <h3>选中内容</h3>
+                            </div>
+                            <div id="builder-flow-inspector-body" class="builder-flow-inspector-body">
+                                当前没有选中节点或连线。
+                            </div>
+                        </section>
+                    </aside>
+                </div>
+            </div>
         </section>
     </section>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.55/dist/drawflow.min.js"></script>
 <script src="{{ url_for('static', filename='js/card_builder.js') }}"></script>
 {% endblock %}
