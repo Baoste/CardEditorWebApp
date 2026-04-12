@@ -109,6 +109,34 @@ def get_card_by_filename(file_name: str):
     return build_card_descriptor(path)
 
 
+def normalize_card_editor_payload(payload):
+    required_fields = ("id", "name", "description", "point", "type", "count")
+    normalized = {}
+
+    for field_name in required_fields:
+        if field_name not in payload:
+            raise ValueError(f"{field_name} is required.")
+
+    try:
+        normalized["id"] = int(payload["id"])
+        normalized["point"] = int(payload["point"])
+        normalized["type"] = int(payload["type"])
+        normalized["count"] = int(payload["count"])
+    except (TypeError, ValueError) as error:
+        raise ValueError("id, point, type, and count must be integers.") from error
+
+    if normalized["type"] not in (0, 1):
+        raise ValueError("type must be 0 or 1.")
+
+    normalized["name"] = str(payload["name"]).strip()
+    normalized["description"] = str(payload["description"]).strip()
+
+    if not normalized["name"]:
+        raise ValueError("name cannot be empty.")
+
+    return normalized
+
+
 @main_bp.route("/")
 def index():
     return render_template("index.html")
@@ -126,6 +154,39 @@ def get_cards():
 def get_deck():
     try:
         return jsonify({"deck": load_deck()})
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error)}), 500
+
+
+@main_bp.post("/api/cards/update")
+def update_card():
+    payload = request.get_json(silent=True) or {}
+    file_name = payload.get("fileName")
+
+    if not file_name:
+        return jsonify({"error": "fileName is required."}), 400
+
+    selected_card = get_card_by_filename(file_name)
+    if selected_card is None:
+        return jsonify({"error": f"Card file not found: {file_name}"}), 404
+
+    try:
+        normalized = normalize_card_editor_payload(payload)
+        card_path = CARDS_DIR / file_name
+        card_document = read_json_file(card_path)
+
+        if isinstance(card_document, dict) and isinstance(card_document.get("card"), dict):
+            editable_card = card_document["card"]
+        elif isinstance(card_document, dict):
+            editable_card = card_document
+        else:
+            return jsonify({"error": "Card JSON must be an object."}), 400
+
+        for key, value in normalized.items():
+            editable_card[key] = value
+
+        write_json_file(card_path, card_document)
+        return jsonify({"card": build_card_descriptor(card_path)})
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error)}), 500
 

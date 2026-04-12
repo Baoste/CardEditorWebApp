@@ -4,6 +4,8 @@ const state = {
     filterText: "",
     draggingCardFile: null,
     draggingDeckIndex: null,
+    selectedLibraryFile: null,
+    selectedCardForEdit: null,
 };
 
 const elements = {
@@ -14,6 +16,16 @@ const elements = {
     jsonPreview: document.getElementById("json-preview"),
     detailTitle: document.getElementById("detail-title"),
     statusMessage: document.getElementById("status-message"),
+    cardEditorForm: document.getElementById("card-editor-form"),
+    editorHint: document.getElementById("editor-hint"),
+    editorSelectedFile: document.getElementById("editor-selected-file"),
+    editorId: document.getElementById("editor-id"),
+    editorName: document.getElementById("editor-name"),
+    editorDescription: document.getElementById("editor-description"),
+    editorPoint: document.getElementById("editor-point"),
+    editorType: document.getElementById("editor-type"),
+    editorCount: document.getElementById("editor-count"),
+    editorSaveButton: document.getElementById("editor-save-button"),
     allCardCount: document.getElementById("all-card-count"),
     deckCount: document.getElementById("deck-count"),
     importServerButton: document.getElementById("import-server-button"),
@@ -37,6 +49,73 @@ function setStatus(message, isError = false) {
 function showJson(title, payload) {
     elements.detailTitle.textContent = title;
     elements.jsonPreview.textContent = formatJson(payload);
+}
+
+function setEditorEnabled(enabled) {
+    [
+        elements.editorId,
+        elements.editorName,
+        elements.editorDescription,
+        elements.editorPoint,
+        elements.editorType,
+        elements.editorCount,
+        elements.editorSaveButton,
+    ].forEach((element) => {
+        element.disabled = !enabled;
+    });
+}
+
+function resetEditorForm() {
+    state.selectedCardForEdit = null;
+    elements.cardEditorForm.reset();
+    elements.editorSelectedFile.textContent = "未选择卡牌";
+    elements.editorHint.textContent = "点击左侧卡牌后可编辑并保存到对应 JSON";
+    setEditorEnabled(false);
+}
+
+function populateEditor(cardItem) {
+    const coreCard = getCardCore(cardItem.card);
+
+    state.selectedCardForEdit = cardItem.fileName;
+    elements.editorId.value = coreCard?.id ?? "";
+    elements.editorName.value = coreCard?.name ?? "";
+    elements.editorDescription.value = coreCard?.description ?? "";
+    elements.editorPoint.value = coreCard?.point ?? "";
+    elements.editorType.value = String(coreCard?.type ?? 1);
+    elements.editorCount.value = coreCard?.count ?? "";
+    elements.editorSelectedFile.textContent = cardItem.fileName;
+    elements.editorHint.textContent = "修改后点击保存，会写回原始 card_xxx.json";
+    setEditorEnabled(true);
+}
+
+function replaceCardInState(updatedCard) {
+    state.cards = state.cards.map((item) => (
+        item.fileName === updatedCard.fileName ? updatedCard : item
+    ));
+}
+
+function selectLibraryCard(cardItem) {
+    state.selectedLibraryFile = cardItem.fileName;
+    renderLibrary();
+    populateEditor(cardItem);
+    showJson(cardItem.fileName, cardItem.card);
+}
+
+function buildCardLookupKey(card) {
+    const coreCard = getCardCore(card);
+
+    if (coreCard && typeof coreCard === "object" && !Array.isArray(coreCard)) {
+        if (coreCard.id !== undefined && coreCard.id !== null) {
+            return `id:${coreCard.id}`;
+        }
+
+        const displayName = getCardDisplayName(card, "");
+        if (displayName) {
+            return `name:${displayName}|summary:${summarizeCard(card)}`;
+        }
+    }
+
+    return `json:${formatJson(card)}`;
 }
 
 function getCardCore(card) {
@@ -249,7 +328,7 @@ function renderLibrary() {
     elements.libraryList.innerHTML = filteredCards
         .map((item) => `
             <article
-                class="card-tile"
+                class="card-tile ${state.selectedLibraryFile === item.fileName ? "is-selected" : ""}"
                 data-file-name="${item.fileName}"
                 draggable="true"
             >
@@ -308,7 +387,7 @@ function bindLibraryEvents() {
         node.addEventListener("click", () => {
             const card = state.cards.find((item) => item.fileName === node.dataset.fileName);
             if (card) {
-                showJson(card.fileName, card.card);
+                selectLibraryCard(card);
             }
         });
 
@@ -344,8 +423,74 @@ function bindLibraryEvents() {
     });
 }
 
+function findLibraryCardForDeckCard(deckCard) {
+    const targetKey = buildCardLookupKey(deckCard);
+    return state.cards.find((item) => buildCardLookupKey(item.card) === targetKey) || null;
+}
+
+function scrollLibraryCardIntoView(fileName) {
+    const targetNode = elements.libraryList.querySelector(`[data-file-name="${CSS.escape(fileName)}"]`);
+    if (!targetNode) {
+        return false;
+    }
+
+    const containerRect = elements.libraryList.getBoundingClientRect();
+    const targetRect = targetNode.getBoundingClientRect();
+    const deltaTop = targetRect.top - containerRect.top;
+    const nextScrollTop = elements.libraryList.scrollTop + deltaTop;
+
+    elements.libraryList.scrollTo({
+        top: Math.max(0, nextScrollTop),
+        behavior: "smooth",
+    });
+
+    targetNode.classList.add("flash-selected");
+    window.setTimeout(() => {
+        targetNode.classList.remove("flash-selected");
+    }, 1400);
+
+    return true;
+}
+
+function jumpToLibraryCardFromDeckCard(deckCard) {
+    const matchedLibraryCard = findLibraryCardForDeckCard(deckCard);
+
+    if (!matchedLibraryCard) {
+        setStatus("没有在卡牌库中找到这张卡", true);
+        return;
+    }
+
+    if (state.filterText) {
+        state.filterText = "";
+        elements.cardSearch.value = "";
+    }
+
+    state.selectedLibraryFile = matchedLibraryCard.fileName;
+    populateEditor(matchedLibraryCard);
+    renderLibrary();
+    showJson(matchedLibraryCard.fileName, matchedLibraryCard.card);
+
+    if (scrollLibraryCardIntoView(matchedLibraryCard.fileName)) {
+        setStatus(`已定位到卡牌库中的 ${matchedLibraryCard.name}`);
+    }
+}
+
 function bindDeckEvents() {
     elements.deckList.querySelectorAll(".deck-card").forEach((node) => {
+        node.addEventListener("click", (event) => {
+            if (event.target.closest("button")) {
+                return;
+            }
+
+            const index = Number(node.dataset.deckIndex);
+            const card = state.deck[index];
+            if (!card) {
+                return;
+            }
+
+            jumpToLibraryCardFromDeckCard(card);
+        });
+
         node.addEventListener("dragstart", () => {
             state.draggingDeckIndex = Number(node.dataset.deckIndex);
             state.draggingCardFile = null;
@@ -480,6 +625,40 @@ function downloadDeckFile() {
     window.location.href = "/api/deck/download";
 }
 
+async function saveCardEdits(event) {
+    event.preventDefault();
+
+    if (!state.selectedCardForEdit) {
+        setStatus("请先在卡牌库中选择一张卡", true);
+        return;
+    }
+
+    const payload = {
+        fileName: state.selectedCardForEdit,
+        id: elements.editorId.value,
+        name: elements.editorName.value,
+        description: elements.editorDescription.value,
+        point: elements.editorPoint.value,
+        type: elements.editorType.value,
+        count: elements.editorCount.value,
+    };
+
+    setStatus(`正在保存 ${state.selectedCardForEdit} ...`);
+
+    try {
+        const response = await requestJson("/api/cards/update", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+
+        replaceCardInState(response.card);
+        selectLibraryCard(response.card);
+        setStatus(`${response.card.fileName} 已保存`);
+    } catch (error) {
+        setStatus(error.message, true);
+    }
+}
+
 function bindGlobalEvents() {
     document.addEventListener("scroll", () => {
         hideHoverPreview();
@@ -523,6 +702,8 @@ function bindGlobalEvents() {
         downloadDeckFile();
     });
 
+    elements.cardEditorForm.addEventListener("submit", saveCardEdits);
+
     elements.cardSearch.addEventListener("input", (event) => {
         state.filterText = event.target.value;
         renderLibrary();
@@ -530,5 +711,6 @@ function bindGlobalEvents() {
     });
 }
 
+resetEditorForm();
 bindGlobalEvents();
 loadData();

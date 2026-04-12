@@ -61,6 +61,52 @@
         </section>
     </section>
 
+    <section class="panel editor-panel">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">编辑</p>
+                <h2>卡牌基础字段</h2>
+            </div>
+            <div id="editor-hint" class="editor-hint">点击左侧卡牌后可编辑并保存到对应 JSON</div>
+        </div>
+
+        <form id="card-editor-form" class="editor-form">
+            <div class="editor-grid">
+                <label class="editor-field">
+                    <span>ID</span>
+                    <input id="editor-id" name="id" type="number" disabled>
+                </label>
+                <label class="editor-field">
+                    <span>名称</span>
+                    <input id="editor-name" name="name" type="text" disabled>
+                </label>
+                <label class="editor-field editor-field-wide">
+                    <span>描述</span>
+                    <textarea id="editor-description" name="description" rows="4" disabled></textarea>
+                </label>
+                <label class="editor-field">
+                    <span>点数</span>
+                    <input id="editor-point" name="point" type="number" disabled>
+                </label>
+                <label class="editor-field">
+                    <span>类型</span>
+                    <select id="editor-type" name="type" disabled>
+                        <option value="0">0 - 点数牌</option>
+                        <option value="1">1 - 技能牌</option>
+                    </select>
+                </label>
+                <label class="editor-field">
+                    <span>数量</span>
+                    <input id="editor-count" name="count" type="number" disabled>
+                </label>
+            </div>
+            <div class="editor-actions">
+                <div id="editor-selected-file" class="editor-selected-file">未选择卡牌</div>
+                <button id="editor-save-button" class="primary-button" type="submit" disabled>保存当前卡牌</button>
+            </div>
+        </form>
+    </section>
+
     <section class="panel detail-panel">
         <div class="panel-header">
             <div>
