@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
@@ -15,6 +16,10 @@ DECK_FILE = DATA_DIR / "SkillCardDeck.json"
 GAME_SERVER_DECK_PATH = os.environ.get(
     "CARD_GAME_SERVER_SKILL_CARDS_FILE",
     "/home/ubuntu//CardGameForLinux/CardGameServer_Data/StreamingAssets/SkillCardsT.json",
+)
+RESTART_SCRIPT_PATH = os.environ.get(
+    "CARD_GAME_RESTART_SCRIPT",
+    "/home/ubuntu/restart_server.sh",
 )
 
 
@@ -171,6 +176,45 @@ def get_deck():
         return jsonify({"deck": load_deck()})
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error)}), 500
+
+
+@main_bp.post("/api/server/restart")
+def restart_server():
+    script_path = Path(RESTART_SCRIPT_PATH)
+
+    if not script_path.exists():
+        return jsonify(
+            {
+                "error": f"Restart script not found: {RESTART_SCRIPT_PATH}",
+                "scriptPath": RESTART_SCRIPT_PATH,
+            }
+        ), 500
+
+    try:
+        completed = subprocess.run(
+            ["/bin/bash", str(script_path)],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=180,
+        )
+        return jsonify(
+            {
+                "message": "Server restart command completed.",
+                "scriptPath": RESTART_SCRIPT_PATH,
+                "stdout": completed.stdout.strip(),
+                "stderr": completed.stderr.strip(),
+            }
+        )
+    except subprocess.CalledProcessError as error:
+        return jsonify(
+            {
+                "error": error.stderr.strip() or error.stdout.strip() or str(error),
+                "scriptPath": RESTART_SCRIPT_PATH,
+            }
+        ), 500
+    except (OSError, subprocess.SubprocessError) as error:
+        return jsonify({"error": str(error), "scriptPath": RESTART_SCRIPT_PATH}), 500
 
 
 @main_bp.post("/api/cards/update")

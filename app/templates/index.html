@@ -4,6 +4,16 @@
 
 {% block content %}
 <main class="page-shell">
+    <section class="panel server-panel">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">服务器</p>
+                <h2>服务器控制面板</h2>
+            </div>
+            <button id="restart-server-button" class="primary-button" type="button">重启服务器</button>
+        </div>
+    </section>
+
     <section class="hero">
         <div>
             <p class="eyebrow">Card Deck Planner</p>
@@ -49,6 +59,8 @@
                     <button id="reload-button" class="secondary-button" type="button">重新读取</button>
                 </div>
             </div>
+
+            <input id="deck-search" class="search-input deck-search-input" type="search" placeholder="搜索卡组中的卡牌">
 
             <div id="deck-dropzone" class="deck-dropzone">
                 <div class="dropzone-copy">

@@ -2,6 +2,7 @@ const state = {
     cards: [],
     deck: [],
     filterText: "",
+    deckFilterText: "",
     draggingCardFile: null,
     draggingDeckIndex: null,
     selectedLibraryFile: null,
@@ -26,12 +27,14 @@ const elements = {
     editorType: document.getElementById("editor-type"),
     editorCount: document.getElementById("editor-count"),
     editorSaveButton: document.getElementById("editor-save-button"),
+    restartServerButton: document.getElementById("restart-server-button"),
     allCardCount: document.getElementById("all-card-count"),
     deckCount: document.getElementById("deck-count"),
     importServerButton: document.getElementById("import-server-button"),
     downloadDeckButton: document.getElementById("download-deck-button"),
     reloadButton: document.getElementById("reload-button"),
     cardSearch: document.getElementById("card-search"),
+    deckSearch: document.getElementById("deck-search"),
 };
 
 function formatJson(value) {
@@ -347,6 +350,23 @@ function renderLibrary() {
 }
 
 function renderDeck() {
+    const keyword = state.deckFilterText.trim().toLowerCase();
+    const filteredDeck = state.deck
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => {
+            if (!keyword) {
+                return true;
+            }
+
+            const haystack = [
+                getCardDisplayName(card, ""),
+                summarizeCard(card),
+                formatJson(card),
+            ].join(" ").toLowerCase();
+
+            return haystack.includes(keyword);
+        });
+
     if (!state.deck.length) {
         elements.deckList.innerHTML = `
             <div class="empty-state">
@@ -357,8 +377,18 @@ function renderDeck() {
         return;
     }
 
-    elements.deckList.innerHTML = state.deck
-        .map((card, index) => `
+    if (!filteredDeck.length) {
+        elements.deckList.innerHTML = `
+            <div class="empty-state">
+                <strong>没有匹配到卡组卡牌</strong>
+                <div>试试调整搜索词，或清空搜索栏查看全部卡牌。</div>
+            </div>
+        `;
+        return;
+    }
+
+    elements.deckList.innerHTML = filteredDeck
+        .map(({ card, index }) => `
             <article class="deck-card" data-deck-index="${index}" draggable="true">
                 <div class="deck-card-body">
                     <div class="deck-card-info">
@@ -620,6 +650,20 @@ async function importDeckToGameServer() {
     }
 }
 
+async function restartServer() {
+    setStatus("正在执行服务器重启脚本...");
+
+    try {
+        const response = await requestJson("/api/server/restart", {
+            method: "POST",
+        });
+
+        setStatus(`服务器重启命令已执行: ${response.scriptPath}`);
+    } catch (error) {
+        setStatus(error.message, true);
+    }
+}
+
 function downloadDeckFile() {
     setStatus("正在下载 SkillCardsT.json ...");
     window.location.href = "/api/deck/download";
@@ -698,6 +742,10 @@ function bindGlobalEvents() {
         importDeckToGameServer();
     });
 
+    elements.restartServerButton.addEventListener("click", () => {
+        restartServer();
+    });
+
     elements.downloadDeckButton.addEventListener("click", () => {
         downloadDeckFile();
     });
@@ -708,6 +756,11 @@ function bindGlobalEvents() {
         state.filterText = event.target.value;
         renderLibrary();
         hideHoverPreview();
+    });
+
+    elements.deckSearch.addEventListener("input", (event) => {
+        state.deckFilterText = event.target.value;
+        renderDeck();
     });
 }
 
