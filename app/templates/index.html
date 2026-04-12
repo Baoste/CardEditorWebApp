@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block title %}首页{% endblock %}
+
+{% block content %}
+<h1>Hello Tencent Cloud</h1>
+<p>我的 Python 网页上线了。</p>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
