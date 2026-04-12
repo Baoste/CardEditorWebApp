@@ -968,7 +968,7 @@ function renderCardGroup(title, items, emptyCopy) {
                 <button class="ghost-button builder-delete-button builder-compact-button" type="button" data-delete-file="${item.fileName}">删除</button>
                             </div>
                         </div>
-                        <div class="card-summary">${escapeHtml(`id: ${core.id ?? "-"} | type: ${core.type ?? "-"} | point: ${core.point ?? "-"}`)}</div>
+                        <div class="card-summary">${escapeHtml(`id: ${core.id ?? "-"} | type: ${core.type ?? "-"} | point: ${core.point ?? "-"} | count: ${core.count ?? "-"}`)}</div>
                     </article>
                 `;
             }).join("") : `<div class="builder-group-empty">${escapeHtml(emptyCopy)}</div>`) : ""}
