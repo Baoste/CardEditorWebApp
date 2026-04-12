@@ -129,6 +129,7 @@ function builderSetStatus(message, isError = false) {
 
 function setFlowStatus(message, isError = false) {
     builderElements.flowStatus.textContent = message;
+    builderElements.flowStatus.style.display = message ? "" : "none";
     builderElements.flowStatus.style.background = isError ? "rgba(176, 58, 46, 0.12)" : "rgba(44, 122, 88, 0.12)";
     builderElements.flowStatus.style.color = isError ? "#a13329" : "#2c7a58";
 }
@@ -616,15 +617,13 @@ async function loadFlowForCurrentCard() {
         renderFlowEditor();
         return;
     }
-
-    setFlowStatus(`正在读取卡牌 ${cardId} 的流程图...`);
     try {
         const response = await requestJson(`/api/card-flow?cardId=${cardId}`);
         if (getCurrentFlowCardId() !== cardId) {
             return;
         }
         builderState.currentFlow = sanitizeFlowDocument(response.flow, cardId);
-        setFlowStatus(`流程图已载入: ${getFlowPathLabel(cardId)}`);
+        setFlowStatus("");
         importFlowToEditor();
         renderFlowEditor();
     } catch (error) {
@@ -644,8 +643,6 @@ async function saveCurrentFlow(flowOverride = null) {
         setFlowStatus("请先设置有效卡牌 ID，再保存流程图。", true);
         return false;
     }
-
-    setFlowStatus(`正在保存卡牌 ${cardId} 的流程图...`);
     try {
         builderState.currentFlow = flowOverride
             ? sanitizeFlowDocument(flowOverride, cardId)
@@ -658,7 +655,7 @@ async function saveCurrentFlow(flowOverride = null) {
             }),
         });
         builderState.currentFlow = sanitizeFlowDocument(response.flow, cardId);
-        setFlowStatus(`流程图已保存到 ${response.path}`);
+        setFlowStatus("");
         importFlowToEditor();
         renderFlowEditor();
         return true;
