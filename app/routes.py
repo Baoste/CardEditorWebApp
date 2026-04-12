@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 from copy import deepcopy
 from io import BytesIO
@@ -13,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 CARDS_DIR = DATA_DIR / "cards"
 DECK_FILE = DATA_DIR / "SkillCardDeck.json"
+CARD_COMPLETION_FILE = DATA_DIR / "CardCompletionStatus.json"
 GAME_SERVER_DECK_PATH = os.environ.get(
     "CARD_GAME_SERVER_SKILL_CARDS_FILE",
     "/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/SkillCardsT.json",
@@ -29,6 +31,9 @@ def ensure_data_files():
 
     if not DECK_FILE.exists():
         write_json_file(DECK_FILE, {"cards": []})
+
+    if not CARD_COMPLETION_FILE.exists():
+        write_json_file(CARD_COMPLETION_FILE, {})
 
 
 def read_json_file(path: Path):
@@ -68,6 +73,27 @@ def normalize_deck_cards(cards):
     return [extract_card_core(card) for card in cards]
 
 
+def load_card_completion_statuses():
+    ensure_data_files()
+    raw_statuses = read_json_file(CARD_COMPLETION_FILE)
+
+    if not isinstance(raw_statuses, dict):
+        return {}
+
+    normalized = {}
+    for key, value in raw_statuses.items():
+        try:
+            normalized[str(int(key))] = bool(value)
+        except (TypeError, ValueError):
+            continue
+
+    return normalized
+
+
+def write_card_completion_statuses(statuses):
+    write_json_file(CARD_COMPLETION_FILE, statuses)
+
+
 def load_deck():
     ensure_data_files()
     deck_document = read_json_file(DECK_FILE)
@@ -81,12 +107,13 @@ def load_deck():
     raise ValueError('SkillCardDeck.json must contain {"cards": [...]}')
 
 
-def build_card_descriptor(path: Path):
+def build_card_descriptor(path: Path, completion_statuses=None):
     card = read_json_file(path)
     card_core = card.get("card") if isinstance(card, dict) else None
     if not isinstance(card_core, dict):
         card_core = card
     display_name = None
+    card_id = path.stem
 
     if isinstance(card_core, dict):
         display_name = (
@@ -95,21 +122,30 @@ def build_card_descriptor(path: Path):
             or card_core.get("cardName")
             or card_core.get("CardName")
         )
+        try:
+            card_id = int(card_core.get("id"))
+        except (TypeError, ValueError):
+            card_id = path.stem
+
+    if completion_statuses is None:
+        completion_statuses = load_card_completion_statuses()
 
     return {
-        "id": path.stem,
+        "id": card_id,
         "fileName": path.name,
         "name": display_name or path.stem,
         "card": card,
+        "isCompleted": bool(completion_statuses.get(str(card_id), False)),
     }
 
 
 def load_cards():
     ensure_data_files()
     cards = []
+    completion_statuses = load_card_completion_statuses()
 
     for path in sorted(CARDS_DIR.glob("card_*.json")):
-        cards.append(build_card_descriptor(path))
+        cards.append(build_card_descriptor(path, completion_statuses))
 
     return cards
 
@@ -250,16 +286,21 @@ def save_card_file():
         return jsonify({"error": "document must be a JSON object."}), 400
 
     try:
+        completion_statuses = load_card_completion_statuses()
         target_file_name = build_card_file_name_from_document(document)
         target_path = resolve_card_path(target_file_name, must_exist=False)
         if target_path is None:
             return jsonify({"error": "Unable to resolve target card file path."}), 400
 
         current_path = None
+        previous_card_id = None
         if current_file_name:
             current_path = resolve_card_path(current_file_name, must_exist=True)
             if current_path is None:
                 return jsonify({"error": f"Card file not found: {current_file_name}"}), 404
+            current_document = read_json_file(current_path)
+            previous_card_core = extract_card_core(current_document)
+            previous_card_id = int(previous_card_core["id"])
 
         if current_path is None and target_path.exists():
             return jsonify({"error": f"Target card file already exists: {target_file_name}"}), 409
@@ -272,6 +313,13 @@ def save_card_file():
             return jsonify({"error": f"Target card file already exists: {target_file_name}"}), 409
 
         write_json_file(target_path, document)
+
+        new_card_id = int(extract_card_core(document)["id"])
+        if previous_card_id is not None and previous_card_id != new_card_id:
+            previous_status = completion_statuses.pop(str(previous_card_id), None)
+            if previous_status is not None and str(new_card_id) not in completion_statuses:
+                completion_statuses[str(new_card_id)] = previous_status
+            write_card_completion_statuses(completion_statuses)
 
         if current_path is not None and current_path != target_path and current_path.exists():
             current_path.unlink()
@@ -318,6 +366,51 @@ def restart_server():
         ), 500
     except (OSError, subprocess.SubprocessError) as error:
         return jsonify({"error": str(error), "scriptPath": RESTART_SCRIPT_PATH}), 500
+
+
+@main_bp.get("/api/deck/chinese-chars")
+def export_deck_chinese_chars():
+    try:
+        deck_document = read_json_file(DECK_FILE)
+        content = dump_json_text(deck_document)
+        chinese_chars = "".join(sorted(set(re.findall(r"[\u4e00-\u9fff]", content))))
+        buffer = BytesIO(chinese_chars.encode("utf-8"))
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name="SkillCardDeck_ChineseChars.txt",
+            mimetype="text/plain",
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error)}), 500
+
+
+@main_bp.post("/api/card-completion")
+def update_card_completion():
+    payload = request.get_json(silent=True) or {}
+    card_id = payload.get("cardId")
+    is_completed = payload.get("isCompleted")
+
+    try:
+        normalized_card_id = int(card_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "cardId must be an integer."}), 400
+
+    if normalized_card_id <= 0:
+        return jsonify({"error": "cardId must be greater than 0."}), 400
+
+    if not isinstance(is_completed, bool):
+        return jsonify({"error": "isCompleted must be a boolean."}), 400
+
+    try:
+        statuses = load_card_completion_statuses()
+        statuses[str(normalized_card_id)] = is_completed
+        write_card_completion_statuses(statuses)
+        return jsonify({"cardId": normalized_card_id, "isCompleted": is_completed})
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error)}), 500
 
 
 @main_bp.post("/api/cards/update")

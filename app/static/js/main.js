@@ -28,6 +28,7 @@ const elements = {
     editorCount: document.getElementById("editor-count"),
     editorSaveButton: document.getElementById("editor-save-button"),
     restartServerButton: document.getElementById("restart-server-button"),
+    exportChineseCharsButton: document.getElementById("export-chinese-chars-button"),
     allCardCount: document.getElementById("all-card-count"),
     deckCount: document.getElementById("deck-count"),
     importServerButton: document.getElementById("import-server-button"),
@@ -298,13 +299,17 @@ async function loadData() {
 }
 
 function updateCounters() {
-    elements.allCardCount.textContent = String(state.cards.length);
+    elements.allCardCount.textContent = String(state.cards.filter((item) => item.isCompleted).length);
     elements.deckCount.textContent = String(state.deck.length);
 }
 
 function renderLibrary() {
     const keyword = state.filterText.trim().toLowerCase();
     const filteredCards = state.cards.filter((item) => {
+        if (!item.isCompleted) {
+            return false;
+        }
+
         if (!keyword) {
             return true;
         }
@@ -668,6 +673,11 @@ function downloadDeckFile() {
     window.location.href = "/api/deck/download";
 }
 
+function downloadChineseCharsFile() {
+    setStatus("正在导出 SkillCardDeck.json 中的中文字符...");
+    window.location.href = "/api/deck/chinese-chars";
+}
+
 async function saveCardEdits(event) {
     event.preventDefault();
 
@@ -743,6 +753,10 @@ function bindGlobalEvents() {
 
     elements.restartServerButton.addEventListener("click", () => {
         restartServer();
+    });
+
+    elements.exportChineseCharsButton.addEventListener("click", () => {
+        downloadChineseCharsFile();
     });
 
     elements.downloadDeckButton.addEventListener("click", () => {

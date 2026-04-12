@@ -77,6 +77,10 @@ const builderState = {
     currentDocument: null,
     effectFoldouts: [],
     participantFoldouts: {},
+    cardGroupFoldouts: {
+        pending: true,
+        completed: true,
+    },
 };
 
 const builderElements = {
@@ -86,6 +90,8 @@ const builderElements = {
     title: document.getElementById("builder-title"),
     status: document.getElementById("builder-status"),
     fileName: document.getElementById("builder-file-name"),
+    completionLabel: document.getElementById("builder-completion-label"),
+    completionToggle: document.getElementById("builder-completion-toggle"),
     structuredEditor: document.getElementById("builder-structured-editor"),
     jsonEditor: document.getElementById("builder-json-editor"),
     newButton: document.getElementById("builder-new-button"),
@@ -97,6 +103,28 @@ function builderSetStatus(message, isError = false) {
     builderElements.status.textContent = message;
     builderElements.status.style.background = isError ? "rgba(176, 58, 46, 0.12)" : "rgba(44, 122, 88, 0.12)";
     builderElements.status.style.color = isError ? "#a13329" : "#2c7a58";
+}
+
+function getCurrentCardId() {
+    const cardId = Number(getCardCore(builderState.currentDocument)?.id);
+    if (!Number.isInteger(cardId) || cardId <= 0) {
+        return null;
+    }
+    return cardId;
+}
+
+function getCardCompletionStatus(cardId) {
+    return Boolean(
+        builderState.cards.find((item) => Number(getCardCore(item.card)?.id) === Number(cardId))?.isCompleted,
+    );
+}
+
+function applyCompletionStatus(cardId, isCompleted) {
+    builderState.cards.forEach((item) => {
+        if (Number(getCardCore(item.card)?.id) === Number(cardId)) {
+            item.isCompleted = isCompleted;
+        }
+    });
 }
 
 function escapeHtml(value) {
@@ -284,6 +312,28 @@ function syncFileName() {
     } catch {
         builderElements.fileName.value = "";
     }
+}
+
+function syncCompletionPanel() {
+    const cardId = getCurrentCardId();
+    if (!cardId) {
+        builderElements.completionLabel.textContent = "未选择卡牌";
+        builderElements.completionToggle.textContent = "选择卡牌后可切换";
+        builderElements.completionToggle.disabled = true;
+        builderElements.completionToggle.dataset.completed = "";
+        return;
+    }
+
+    const isCompleted = getCardCompletionStatus(cardId);
+    builderElements.completionLabel.innerHTML = `
+        <span class="builder-completion-badge ${isCompleted ? "is-completed" : "is-pending"}">
+            ${isCompleted ? "已制作" : "未制作"}
+        </span>
+        <span>卡牌 ID: ${cardId}</span>
+    `;
+    builderElements.completionToggle.textContent = isCompleted ? "改为未制作" : "标记为已制作";
+    builderElements.completionToggle.disabled = false;
+    builderElements.completionToggle.dataset.completed = String(isCompleted);
 }
 
 async function requestJson(url, options = {}) {
@@ -478,10 +528,46 @@ function setCurrentDocument(document, fileName = "") {
     builderState.effectFoldouts = [];
     builderState.participantFoldouts = {};
     syncFileName();
+    syncCompletionPanel();
     builderElements.title.textContent = fileName || "新建卡牌";
     builderElements.jsonEditor.value = formatJson(builderState.currentDocument);
     renderStructuredEditor();
     renderBuilderCardList();
+}
+
+function renderCardGroup(title, items, emptyCopy) {
+    const groupKey = title === "未制作" ? "pending" : "completed";
+    const open = builderState.cardGroupFoldouts[groupKey] !== false;
+    return `
+        <section class="builder-card-group">
+            <button class="builder-card-group-header" type="button" data-action="toggle-card-group" data-group="${groupKey}">
+                <span class="builder-card-group-title">${open ? "▾" : "▸"} ${escapeHtml(title)}</span>
+                <span>${items.length}</span>
+            </button>
+            ${open ? (items.length ? items.map((item) => {
+                const core = getCardCore(item.card) || {};
+                const isCompleted = Boolean(item.isCompleted);
+                return `
+                    <article class="card-tile ${builderState.selectedFileName === item.fileName ? "is-selected" : ""}" data-file-name="${item.fileName}">
+                        <div class="card-tile-header">
+                            <div>
+                                <div class="builder-card-topline">
+                                    <h3 class="card-title">${escapeHtml(item.name)}</h3>
+                                    <span class="builder-completion-badge ${isCompleted ? "is-completed" : "is-pending"}">${isCompleted ? "已制作" : "未制作"}</span>
+                                </div>
+                                <div class="card-file">${escapeHtml(item.fileName)}</div>
+                            </div>
+                            <div class="builder-card-actions">
+                <button class="ghost-button builder-status-toggle builder-compact-button" type="button" data-toggle-completion="${core.id}" data-target-completion="${isCompleted ? "false" : "true"}">${isCompleted ? "设为未制作" : "设为已制作"}</button>
+                <button class="ghost-button builder-delete-button builder-compact-button" type="button" data-delete-file="${item.fileName}">删除</button>
+                            </div>
+                        </div>
+                        <div class="card-summary">${escapeHtml(`id: ${core.id ?? "-"} | type: ${core.type ?? "-"} | point: ${core.point ?? "-"}`)}</div>
+                    </article>
+                `;
+            }).join("") : `<div class="builder-group-empty">${escapeHtml(emptyCopy)}</div>`) : ""}
+        </section>
+    `;
 }
 
 function renderBuilderCardList() {
@@ -495,10 +581,13 @@ function renderBuilderCardList() {
         builderElements.cardList.innerHTML = `<div class="empty-state"><strong>没有匹配到卡牌文件</strong><div>可以新建一张卡，或调整搜索词。</div></div>`;
         return;
     }
-    builderElements.cardList.innerHTML = filteredCards.map((item) => {
-        const core = getCardCore(item.card) || {};
-        return `<article class="card-tile ${builderState.selectedFileName === item.fileName ? "is-selected" : ""}" data-file-name="${item.fileName}"><div class="card-tile-header"><div><h3 class="card-title">${escapeHtml(item.name)}</h3><div class="card-file">${escapeHtml(item.fileName)}</div></div><button class="ghost-button builder-delete-button" type="button" data-delete-file="${item.fileName}">删除</button></div><div class="card-summary">${escapeHtml(`id: ${core.id ?? "-"} | type: ${core.type ?? "-"} | point: ${core.point ?? "-"}`)}</div></article>`;
-    }).join("");
+    const completedCards = filteredCards.filter((item) => item.isCompleted);
+    const pendingCards = filteredCards.filter((item) => !item.isCompleted);
+
+    builderElements.cardList.innerHTML = `
+        ${renderCardGroup("未制作", pendingCards, "当前搜索结果里没有未制作卡牌。")}
+        ${renderCardGroup("已制作", completedCards, "当前搜索结果里没有已制作卡牌。")}
+    `;
 }
 
 async function loadCards() {
@@ -506,6 +595,7 @@ async function loadCards() {
     try {
         const response = await requestJson("/api/cards");
         builderState.cards = response.cards;
+        syncCompletionPanel();
         renderBuilderCardList();
         builderSetStatus("卡牌文件已加载");
     } catch (error) {
@@ -561,6 +651,22 @@ async function deleteCardFile(fileName) {
     }
 }
 
+async function updateCardCompletion(cardId, isCompleted) {
+    builderSetStatus(`正在更新卡牌 ${cardId} 的制作状态...`);
+    try {
+        const response = await requestJson("/api/card-completion", {
+            method: "POST",
+            body: JSON.stringify({ cardId, isCompleted }),
+        });
+        applyCompletionStatus(response.cardId, response.isCompleted);
+        syncCompletionPanel();
+        renderBuilderCardList();
+        builderSetStatus(`卡牌 ${response.cardId} 已标记为${response.isCompleted ? "已制作" : "未制作"}`);
+    } catch (error) {
+        builderSetStatus(error.message, true);
+    }
+}
+
 function swapEffects(a, b) {
     const effects = getCardCore(builderState.currentDocument).effects;
     [effects[a], effects[b]] = [effects[b], effects[a]];
@@ -568,6 +674,23 @@ function swapEffects(a, b) {
 }
 
 builderElements.cardList.addEventListener("click", (event) => {
+    const groupToggle = event.target.closest("[data-action='toggle-card-group']");
+    if (groupToggle) {
+        const group = groupToggle.dataset.group;
+        if (group) {
+            builderState.cardGroupFoldouts[group] = !(builderState.cardGroupFoldouts[group] !== false);
+            renderBuilderCardList();
+        }
+        return;
+    }
+    const completionButton = event.target.closest("[data-toggle-completion]");
+    if (completionButton) {
+        updateCardCompletion(
+            Number(completionButton.dataset.toggleCompletion),
+            completionButton.dataset.targetCompletion === "true",
+        );
+        return;
+    }
     const deleteButton = event.target.closest("[data-delete-file]");
     if (deleteButton) {
         deleteCardFile(deleteButton.dataset.deleteFile);
@@ -676,6 +799,14 @@ builderElements.reloadButton.addEventListener("click", () => loadCards());
 builderElements.newButton.addEventListener("click", () => {
     setCurrentDocument(createEmptyDocument(), "");
     builderSetStatus("已生成空白卡模板");
+});
+builderElements.completionToggle.addEventListener("click", () => {
+    const cardId = getCurrentCardId();
+    if (!cardId) {
+        builderSetStatus("请先选择或保存一张卡牌", true);
+        return;
+    }
+    updateCardCompletion(cardId, builderElements.completionToggle.dataset.completed !== "true");
 });
 builderElements.saveButton.addEventListener("click", () => saveCurrentCard());
 builderElements.refreshJsonButton.addEventListener("click", () => {
