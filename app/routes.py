@@ -15,7 +15,7 @@ CARDS_DIR = DATA_DIR / "cards"
 DECK_FILE = DATA_DIR / "SkillCardDeck.json"
 GAME_SERVER_DECK_PATH = os.environ.get(
     "CARD_GAME_SERVER_SKILL_CARDS_FILE",
-    "/home/ubuntu//CardGameForLinux/CardGameServer_Data/StreamingAssets/SkillCardsT.json",
+    "/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/SkillCardsT.json",
 )
 RESTART_SCRIPT_PATH = os.environ.get(
     "CARD_GAME_RESTART_SCRIPT",
@@ -114,16 +114,39 @@ def load_cards():
     return cards
 
 
-def get_card_by_filename(file_name: str):
+def resolve_card_path(file_name: str, must_exist: bool = True):
     path = (CARDS_DIR / file_name).resolve()
     cards_root = CARDS_DIR.resolve()
 
     if (
         path.parent != cards_root
-        or not path.exists()
         or path.suffix.lower() != ".json"
         or not path.name.startswith("card_")
+        or (must_exist and not path.exists())
     ):
+        return None
+
+    return path
+
+
+def build_card_file_name_from_document(document):
+    card_core = extract_card_core(document)
+    card_id = card_core.get("id")
+
+    if card_id is None:
+        raise ValueError("Card document must contain card.id.")
+
+    try:
+        normalized_id = int(card_id)
+    except (TypeError, ValueError) as error:
+        raise ValueError("card.id must be an integer.") from error
+
+    return f"card_{normalized_id}.json"
+
+
+def get_card_by_filename(file_name: str):
+    path = resolve_card_path(file_name, must_exist=True)
+    if path is None:
         return None
 
     return build_card_descriptor(path)
@@ -162,6 +185,11 @@ def index():
     return render_template("index.html")
 
 
+@main_bp.route("/card-builder")
+def card_builder():
+    return render_template("card_builder.html")
+
+
 @main_bp.get("/api/cards")
 def get_cards():
     try:
@@ -174,6 +202,81 @@ def get_cards():
 def get_deck():
     try:
         return jsonify({"deck": load_deck()})
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error)}), 500
+
+
+@main_bp.get("/api/card-file")
+def get_card_file():
+    file_name = request.args.get("fileName", "")
+    path = resolve_card_path(file_name, must_exist=True)
+
+    if path is None or not path.exists():
+        return jsonify({"error": f"Card file not found: {file_name}"}), 404
+
+    try:
+        return jsonify(
+            {
+                "fileName": path.name,
+                "document": read_json_file(path),
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error)}), 500
+
+
+@main_bp.delete("/api/card-file")
+def delete_card_file():
+    file_name = request.args.get("fileName", "")
+    path = resolve_card_path(file_name, must_exist=True)
+
+    if path is None or not path.exists():
+        return jsonify({"error": f"Card file not found: {file_name}"}), 404
+
+    try:
+        path.unlink()
+        return jsonify({"deletedFileName": file_name})
+    except OSError as error:
+        return jsonify({"error": str(error)}), 500
+
+
+@main_bp.post("/api/card-file/save")
+def save_card_file():
+    payload = request.get_json(silent=True) or {}
+    current_file_name = str(payload.get("currentFileName", "")).strip()
+    document = payload.get("document")
+
+    if not isinstance(document, dict):
+        return jsonify({"error": "document must be a JSON object."}), 400
+
+    try:
+        target_file_name = build_card_file_name_from_document(document)
+        target_path = resolve_card_path(target_file_name, must_exist=False)
+        if target_path is None:
+            return jsonify({"error": "Unable to resolve target card file path."}), 400
+
+        current_path = None
+        if current_file_name:
+            current_path = resolve_card_path(current_file_name, must_exist=True)
+            if current_path is None:
+                return jsonify({"error": f"Card file not found: {current_file_name}"}), 404
+
+        if current_path is None and target_path.exists():
+            return jsonify({"error": f"Target card file already exists: {target_file_name}"}), 409
+
+        if (
+            current_path is not None
+            and current_path != target_path
+            and target_path.exists()
+        ):
+            return jsonify({"error": f"Target card file already exists: {target_file_name}"}), 409
+
+        write_json_file(target_path, document)
+
+        if current_path is not None and current_path != target_path and current_path.exists():
+            current_path.unlink()
+
+        return jsonify({"card": build_card_descriptor(target_path)})
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error)}), 500
 

@@ -49,6 +49,72 @@ input {
     line-height: 1.65;
 }
 
+.builder-page-header {
+    margin-bottom: 20px;
+}
+
+.builder-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    gap: 20px;
+}
+
+.builder-sidebar,
+.builder-editor-panel {
+    min-height: 720px;
+}
+
+.builder-search-input {
+    margin-bottom: 16px;
+}
+
+.builder-form-row {
+    margin-bottom: 16px;
+}
+
+.builder-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.builder-textarea-field {
+    display: grid;
+}
+
+.builder-json-editor {
+    width: 100%;
+    min-height: 640px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #201911;
+    color: #f8f0e4;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+.secondary-link-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.75);
+    text-decoration: none;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.secondary-link-button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(181, 92, 43, 0.45);
+}
+
 .hero,
 .workspace,
 .detail-panel {
@@ -324,6 +390,13 @@ input {
     cursor: pointer;
 }
 
+.builder-delete-button {
+    flex-shrink: 0;
+    border-color: rgba(161, 55, 39, 0.2);
+    background: rgba(161, 55, 39, 0.08);
+    color: #a13727;
+}
+
 .editor-panel {
     margin-bottom: 20px;
 }
@@ -536,7 +609,8 @@ input {
 
 @media (max-width: 980px) {
     .hero,
-    .workspace {
+    .workspace,
+    .builder-layout {
         grid-template-columns: 1fr;
     }
 

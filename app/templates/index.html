@@ -10,8 +10,12 @@
                 <p class="panel-kicker">服务器</p>
                 <h2>服务器控制面板</h2>
             </div>
-            <button id="restart-server-button" class="primary-button" type="button">重启服务器</button>
+            <div class="deck-toolbar">
+                <a class="secondary-link-button" href="{{ url_for('main.card_builder') }}">单卡制作页</a>
+                <button id="restart-server-button" class="primary-button" type="button">重启服务器</button>
+            </div>
         </div>
+        <p class="server-panel-copy">点击后会尝试执行 <code>/home/ubuntu/restart_server.sh</code>。</p>
     </section>
 
     <section class="hero">

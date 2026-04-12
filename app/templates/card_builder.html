@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}单卡制作页{% endblock %}
+
+{% block content %}
+<main class="page-shell">
+    <section class="panel builder-page-header">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">制作</p>
+                <h2>单张卡牌制作 / 修改</h2>
+            </div>
+            <a class="secondary-link-button" href="{{ url_for('main.index') }}">返回卡组页</a>
+        </div>
+        <p class="server-panel-copy">
+            这个页面先支持直接编辑原始 JSON 并保存到 <code>data/cards/</code>。
+            你把卡牌结构告诉我后，我会把它升级成专门的结构化编辑器。
+        </p>
+    </section>
+
+    <section class="builder-layout">
+        <aside class="panel builder-sidebar">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">卡牌文件</p>
+                    <h2>data/cards</h2>
+                </div>
+                <button id="builder-reload-button" class="secondary-button" type="button">刷新列表</button>
+            </div>
+            <input id="builder-search" class="search-input builder-search-input" type="search" placeholder="搜索文件名或卡名">
+            <div id="builder-card-list" class="card-list"></div>
+        </aside>
+
+        <section class="panel builder-editor-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">编辑器</p>
+                    <h2 id="builder-title">新建或选择一张卡牌</h2>
+                </div>
+                <div id="builder-status" class="status-message">等待操作</div>
+            </div>
+
+            <div class="builder-form-row">
+                <label class="editor-field">
+                    <span>文件名</span>
+                    <input id="builder-file-name" type="text" placeholder="会根据卡牌 id 自动生成" readonly>
+                </label>
+            </div>
+
+            <div class="builder-actions">
+                <button id="builder-new-button" class="secondary-button" type="button">新建空白卡</button>
+                <button id="builder-format-button" class="secondary-button" type="button">格式化 JSON</button>
+                <button id="builder-save-button" class="primary-button" type="button">保存到 data/cards</button>
+            </div>
+
+            <label class="editor-field builder-textarea-field">
+                <span>卡牌 JSON</span>
+                <textarea id="builder-json-editor" class="builder-json-editor" spellcheck="false"></textarea>
+            </label>
+        </section>
+    </section>
+</main>
+
+<script src="{{ url_for('static', filename='js/card_builder.js') }}"></script>
+{% endblock %}
