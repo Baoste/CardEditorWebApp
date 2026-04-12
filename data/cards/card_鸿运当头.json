@@ -1,0 +1,119 @@
+{
+  "card": {
+    "id": 1105,
+    "name": "鸿运当头",
+    "description": "猜单双，猜中抽两张技能牌",
+    "point": 0,
+    "type": 1,
+    "count": 2,
+    "effects": [
+      {
+        "type": 2,
+        "trueNode": 1,
+        "falseNode": -1,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+            "value": 1
+          }
+        },
+        "target": {
+          "participantType": 512,
+          "filter": {
+            "$type": "Game.Domain.AllCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeChoose, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+            "value": 1
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        }
+      },
+      {
+        "type": 6,
+        "trueNode": 2,
+        "falseNode": -1,
+        "source": {
+          "participantType": 64,
+          "filter": {
+            "$type": "Game.Domain.OddEvenCondition, Assembly-CSharp",
+            "left": {
+              "$type": "Game.Domain.VariableValue, Assembly-CSharp",
+              "source": 0
+            },
+            "right": {
+              "$type": "Game.Domain.VariableValue, Assembly-CSharp",
+              "source": 6
+            }
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        }
+      },
+      {
+        "type": 1,
+        "trueNode": -1,
+        "falseNode": -1,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+          "value": 2
+        }
+      }
+    ]
+  }
+}

@@ -1,9 +1,81 @@
 {% extends "base.html" %}
 
-{% block title %}首页{% endblock %}
+{% block title %}卡组编辑器{% endblock %}
 
 {% block content %}
-<h1>Hello Tencent Cloud</h1>
-<p>我的 Python 网页上线了。</p>
+<main class="page-shell">
+    <section class="hero">
+        <div>
+            <p class="eyebrow">Card Deck Planner</p>
+            <h1>拖拽卡牌，实时写回卡组 JSON</h1>
+            <p class="hero-copy">
+                左侧读取 `data/cards/card_*.json`，右侧读取 `data/SkillCardDeck.json`。
+                把卡牌拖进卡组区后，目标 `card.json` 会追加合并到 deck 数组里。
+            </p>
+        </div>
+        <div class="hero-stats">
+            <article>
+                <span>可用卡牌</span>
+                <strong id="all-card-count">0</strong>
+            </article>
+            <article>
+                <span>当前卡组</span>
+                <strong id="deck-count">0</strong>
+            </article>
+        </div>
+    </section>
+
+    <section class="workspace">
+        <aside class="panel library-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">卡牌库</p>
+                    <h2>所有 Card JSON</h2>
+                </div>
+                <input id="card-search" class="search-input" type="search" placeholder="搜索卡名、文件名或字段">
+            </div>
+            <div id="library-list" class="card-list"></div>
+        </aside>
+
+        <section class="panel deck-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">卡组</p>
+                    <h2>SkillCardDeck.json</h2>
+                </div>
+                <div class="deck-toolbar">
+                    <button id="import-server-button" class="primary-button" type="button">导入到游戏服务器</button>
+                    <button id="download-deck-button" class="secondary-button" type="button">下载 SkillCardsT.json</button>
+                    <button id="reload-button" class="secondary-button" type="button">重新读取</button>
+                </div>
+            </div>
+
+            <div id="deck-dropzone" class="deck-dropzone">
+                <div class="dropzone-copy">
+                    <strong>把左侧卡牌拖到这里</strong>
+                    <span>松手后会立刻写回 `SkillCardDeck.json`</span>
+                </div>
+            </div>
+
+            <div id="deck-list" class="deck-list"></div>
+        </section>
+    </section>
+
+    <section class="panel detail-panel">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">详情</p>
+                <h2 id="detail-title">请选择一张卡牌</h2>
+            </div>
+            <div id="status-message" class="status-message">等待操作</div>
+        </div>
+        <pre id="json-preview" class="json-preview">{
+  "tip": "点击左侧或右侧任意卡牌查看完整 JSON"
+}</pre>
+    </section>
+</main>
+
+<aside id="hover-preview" class="hover-preview is-hidden" aria-hidden="true"></aside>
+
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}

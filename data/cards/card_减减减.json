@@ -1,0 +1,45 @@
+{
+  "card": {
+    "id": 1002,
+    "name": "减减减",
+    "description": "丢弃任意一方的一张点数牌",
+    "point": 1,
+    "type": 1,
+    "count": 2,
+    "effects": [
+      {
+        "type": 3,
+        "trueNode": -1,
+        "falseNode": -1,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 12,
+          "filter": {
+            "$type": "Game.Domain.AllCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeChoose, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+            "value": 1
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        }
+      }
+    ]
+  }
+}

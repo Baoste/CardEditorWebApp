@@ -1,0 +1,46 @@
+{
+  "card": {
+    "id": 1501,
+    "name": "全域天黑",
+    "description": "将牌堆顶上的2张牌倒扣。倒扣后，不可以查看点数",
+    "point": 1,
+    "type": 1,
+    "count": 2,
+    "effects": [
+      {
+        "type": 9,
+        "trueNode": -1,
+        "falseNode": -1,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 32,
+          "filter": {
+            "$type": "Game.Domain.AllCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeLast, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+            "value": 2
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+          "value": 2
+        }
+      }
+    ]
+  }
+}

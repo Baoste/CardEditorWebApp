@@ -1,0 +1,152 @@
+{
+  "card": {
+    "id": 51653,
+    "name": "比大小",
+    "description": "抽一张牌，如果大于等于5，则抽牌，否则删牌",
+    "point": 1,
+    "type": 1,
+    "count": 2,
+    "effects": [
+      {
+        "type": 2,
+        "trueNode": 1,
+        "falseNode": -1,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+            "value": 1
+          }
+        },
+        "target": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        }
+      },
+      {
+        "type": 6,
+        "trueNode": 2,
+        "falseNode": 3,
+        "source": {
+          "participantType": 64,
+          "filter": {
+            "$type": "Game.Domain.CompareCondition, Assembly-CSharp",
+            "left": {
+              "$type": "Game.Domain.VariableValue, Assembly-CSharp",
+              "source": 0
+            },
+            "right": {
+              "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+              "value": 5
+            },
+            "op": 1
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        }
+      },
+      {
+        "type": 0,
+        "trueNode": -1,
+        "falseNode": -1,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+          "value": 1
+        }
+      },
+      {
+        "type": 3,
+        "trueNode": -1,
+        "falseNode": -1,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 12,
+          "filter": {
+            "$type": "Game.Domain.AllCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeChoose, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+            "value": 1
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        }
+      }
+    ]
+  }
+}

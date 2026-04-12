@@ -1,0 +1,49 @@
+{
+  "cards": [
+    {
+      "card": {
+        "id": 1003,
+        "name": "天亮了",
+        "description": "查看牌堆顶两张牌的点数",
+        "point": 0,
+        "type": 1,
+        "count": 2,
+        "effects": [
+          {
+            "type": 8,
+            "trueNode": -1,
+            "falseNode": -1,
+            "source": {
+              "participantType": 0,
+              "filter": {
+                "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+              },
+              "participantSelectionMode": {
+                "$type": "SelectionModeNone, Assembly-CSharp"
+              },
+              "maxSelectCount": {
+                "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+              }
+            },
+            "target": {
+              "participantType": 0,
+              "filter": {
+                "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+              },
+              "participantSelectionMode": {
+                "$type": "SelectionModeNone, Assembly-CSharp"
+              },
+              "maxSelectCount": {
+                "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+              }
+            },
+            "value": {
+              "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+              "value": 2
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
