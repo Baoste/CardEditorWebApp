@@ -36,7 +36,8 @@ const VALUE_SOURCE_OPTIONS = [
     { value: 3, label: "SourceSpecSelectedPointsSum" },
     { value: 4, label: "TargetSpecSelectedPointsSum" },
     { value: 5, label: "ResolvedCardsPointsSum" },
-    { value: 6, label: "UserInterfaceZoneId" },
+    { value: 6, label: "TargetSpecFirstId" },
+    { value: 7, label: "SourceSpecFirstId" },
 ];
 
 const BINARY_OP_OPTIONS = [
