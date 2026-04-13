@@ -892,6 +892,36 @@ input {
     font-size: 1.05rem;
 }
 
+.library-card-topline {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.library-deck-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    border: 1px solid transparent;
+}
+
+.library-deck-badge.is-in-deck {
+    color: #2c7a58;
+    background: rgba(44, 122, 88, 0.12);
+    border-color: rgba(44, 122, 88, 0.18);
+}
+
+.library-deck-badge.is-not-in-deck {
+    color: #8a5a1d;
+    background: rgba(181, 92, 43, 0.12);
+    border-color: rgba(181, 92, 43, 0.18);
+}
+
 .builder-card-topline {
     display: flex;
     gap: 8px;

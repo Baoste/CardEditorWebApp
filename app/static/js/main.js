@@ -7,6 +7,10 @@ const state = {
     draggingDeckIndex: null,
     selectedLibraryFile: null,
     selectedCardForEdit: null,
+    libraryGroupFoldouts: {
+        pending: true,
+        added: true,
+    },
 };
 
 const elements = {
@@ -303,8 +307,49 @@ function updateCounters() {
     elements.deckCount.textContent = String(state.deck.length);
 }
 
+function buildDeckMembershipKeySet() {
+    return new Set(state.deck.map((card) => buildCardLookupKey(card)));
+}
+
+function isLibraryCardInDeck(cardItem, membershipKeys = null) {
+    const keys = membershipKeys || buildDeckMembershipKeySet();
+    return keys.has(buildCardLookupKey(cardItem.card));
+}
+
+function renderLibraryGroup(title, items, groupKey, emptyCopy, membershipKeys) {
+    const open = state.libraryGroupFoldouts[groupKey] !== false;
+
+    return `
+        <section class="builder-card-group">
+            <button class="builder-card-group-header" type="button" data-action="toggle-library-group" data-group="${groupKey}">
+                <span class="builder-card-group-title">${open ? "▼" : "▶"} ${escapeHtml(title)}</span>
+                <span>${items.length}</span>
+            </button>
+            ${open ? (items.length ? items.map((item) => {
+                const isInDeck = isLibraryCardInDeck(item, membershipKeys);
+                return `
+                    <article
+                        class="card-tile ${state.selectedLibraryFile === item.fileName ? "is-selected" : ""}"
+                        data-file-name="${item.fileName}"
+                        draggable="true"
+                    >
+                        <div class="card-tile-header">
+                            <div class="library-card-topline">
+                                <h3 class="card-title">${escapeHtml(item.name)}</h3>
+                                <span class="library-deck-badge ${isInDeck ? "is-in-deck" : "is-not-in-deck"}">${isInDeck ? "已加入" : "未加入"}</span>
+                            </div>
+                        </div>
+                        <div class="card-summary">${escapeHtml(summarizeCard(item.card))}</div>
+                    </article>
+                `;
+            }).join("") : `<div class="builder-group-empty">${escapeHtml(emptyCopy)}</div>`) : ""}
+        </section>
+    `;
+}
+
 function renderLibrary() {
     const keyword = state.filterText.trim().toLowerCase();
+    const membershipKeys = buildDeckMembershipKeySet();
     const filteredCards = state.cards.filter((item) => {
         if (!item.isCompleted) {
             return false;
@@ -333,22 +378,13 @@ function renderLibrary() {
         return;
     }
 
-    elements.libraryList.innerHTML = filteredCards
-        .map((item) => `
-            <article
-                class="card-tile ${state.selectedLibraryFile === item.fileName ? "is-selected" : ""}"
-                data-file-name="${item.fileName}"
-                draggable="true"
-            >
-                <div class="card-tile-header">
-                    <div>
-                        <h3 class="card-title">${escapeHtml(item.name)}</h3>
-                    </div>
-                </div>
-                <div class="card-summary">${escapeHtml(summarizeCard(item.card))}</div>
-            </article>
-        `)
-        .join("");
+    const pendingCards = filteredCards.filter((item) => !isLibraryCardInDeck(item, membershipKeys));
+    const addedCards = filteredCards.filter((item) => isLibraryCardInDeck(item, membershipKeys));
+
+    elements.libraryList.innerHTML = `
+        ${renderLibraryGroup("未加入", pendingCards, "pending", "当前搜索结果里没有未加入卡组的卡牌。", membershipKeys)}
+        ${renderLibraryGroup("已加入", addedCards, "added", "当前搜索结果里没有已加入卡组的卡牌。", membershipKeys)}
+    `;
 
     bindLibraryEvents();
 }
@@ -417,6 +453,17 @@ function renderDeck() {
 }
 
 function bindLibraryEvents() {
+    elements.libraryList.querySelectorAll("[data-action='toggle-library-group']").forEach((button) => {
+        button.addEventListener("click", () => {
+            const group = button.dataset.group;
+            if (!group) {
+                return;
+            }
+            state.libraryGroupFoldouts[group] = !(state.libraryGroupFoldouts[group] !== false);
+            renderLibrary();
+        });
+    });
+
     elements.libraryList.querySelectorAll(".card-tile").forEach((node) => {
         node.addEventListener("click", () => {
             const card = state.cards.find((item) => item.fileName === node.dataset.fileName);
@@ -497,6 +544,12 @@ function jumpToLibraryCardFromDeckCard(deckCard) {
     if (state.filterText) {
         state.filterText = "";
         elements.cardSearch.value = "";
+    }
+
+    if (isLibraryCardInDeck(matchedLibraryCard)) {
+        state.libraryGroupFoldouts.added = true;
+    } else {
+        state.libraryGroupFoldouts.pending = true;
     }
 
     state.selectedLibraryFile = matchedLibraryCard.fileName;
@@ -591,6 +644,7 @@ async function appendCardToDeck(fileName) {
         });
 
         state.deck = response.deck;
+        renderLibrary();
         renderDeck();
         updateCounters();
         showJson(fileName, response.addedCard);
@@ -609,6 +663,7 @@ async function removeDeckCard(index) {
         });
 
         state.deck = response.deck;
+        renderLibrary();
         renderDeck();
         updateCounters();
         showJson(`已移除 #${index + 1}`, response.removedCard);
@@ -704,8 +759,11 @@ async function saveCardEdits(event) {
             body: JSON.stringify(payload),
         });
 
+        state.deck = response.deck;
         replaceCardInState(response.card);
         selectLibraryCard(response.card);
+        renderDeck();
+        updateCounters();
         setStatus(`${response.card.fileName} 已保存`);
     } catch (error) {
         setStatus(error.message, true);

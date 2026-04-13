@@ -246,6 +246,40 @@ def load_deck():
     raise ValueError('SkillCardDeck.json must contain {"cards": [...]}')
 
 
+def sync_updated_card_into_deck(previous_card, updated_card):
+    previous_core = extract_card_core(previous_card)
+    updated_core = extract_card_core(updated_card)
+
+    previous_id = previous_core.get("id")
+    try:
+        previous_id = int(previous_id)
+    except (TypeError, ValueError):
+        return load_deck(), 0
+
+    deck = load_deck()
+    updated_count = 0
+    synchronized_deck = []
+
+    for deck_card in deck:
+        deck_core = extract_card_core(deck_card)
+        deck_id = deck_core.get("id")
+        try:
+            deck_id = int(deck_id)
+        except (TypeError, ValueError):
+            deck_id = None
+
+        if deck_id == previous_id:
+            synchronized_deck.append(deepcopy(updated_core))
+            updated_count += 1
+        else:
+            synchronized_deck.append(deck_core)
+
+    if updated_count:
+        write_deck_file(DECK_FILE, synchronized_deck)
+
+    return synchronized_deck, updated_count
+
+
 def build_card_descriptor(path: Path, completion_statuses=None):
     card = read_json_file(path)
     card_core = card.get("card") if isinstance(card, dict) else None
@@ -627,11 +661,20 @@ def update_card():
         else:
             return jsonify({"error": "Card JSON must be an object."}), 400
 
+        previous_card = deepcopy(editable_card)
+
         for key, value in normalized.items():
             editable_card[key] = value
 
         write_json_file(card_path, card_document)
-        return jsonify({"card": build_card_descriptor(card_path)})
+        deck, updated_deck_card_count = sync_updated_card_into_deck(previous_card, editable_card)
+        return jsonify(
+            {
+                "card": build_card_descriptor(card_path),
+                "deck": deck,
+                "updatedDeckCardCount": updated_deck_card_count,
+            }
+        )
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error)}), 500
 
