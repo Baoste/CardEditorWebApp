@@ -1,14 +1,14 @@
 {
   "card": {
-    "id": 1004,
-    "name": "行动补充",
-    "description": "获得两个行动点",
+    "id": 1501,
+    "name": "全域天黑",
+    "description": "将牌堆顶上的2张牌倒扣。倒扣后，不可以查看点数",
     "point": 1,
     "type": 1,
     "count": 2,
     "effects": [
       {
-        "type": 7,
+        "type": 9,
         "trueNode": -1,
         "falseNode": -1,
         "source": {
@@ -24,15 +24,16 @@
           }
         },
         "target": {
-          "participantType": 0,
+          "participantType": 32,
           "filter": {
-            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+            "$type": "Game.Domain.AllCondition, Assembly-CSharp"
           },
           "participantSelectionMode": {
-            "$type": "SelectionModeNone, Assembly-CSharp"
+            "$type": "SelectionModeLast, Assembly-CSharp"
           },
           "maxSelectCount": {
-            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+            "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+            "value": 2
           }
         },
         "value": {

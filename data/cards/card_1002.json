@@ -1,14 +1,14 @@
 {
   "card": {
-    "id": 1003,
-    "name": "天亮了",
-    "description": "查看牌堆顶两张牌的点数",
-    "point": 0,
+    "id": 1002,
+    "name": "减减减",
+    "description": "丢弃任意一方的一张随机点数牌",
+    "point": 1,
     "type": 1,
     "count": 2,
     "effects": [
       {
-        "type": 8,
+        "type": 3,
         "trueNode": -1,
         "falseNode": -1,
         "source": {
@@ -24,20 +24,20 @@
           }
         },
         "target": {
-          "participantType": 0,
+          "participantType": 12,
           "filter": {
-            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+            "$type": "Game.Domain.AllCondition, Assembly-CSharp"
           },
           "participantSelectionMode": {
-            "$type": "SelectionModeNone, Assembly-CSharp"
+            "$type": "SelectionModeRandom, Assembly-CSharp"
           },
           "maxSelectCount": {
-            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+            "$type": "Game.Domain.ConstValue, Assembly-CSharp",
+            "value": 1
           }
         },
         "value": {
-          "$type": "Game.Domain.ConstValue, Assembly-CSharp",
-          "value": 2
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
         }
       }
     ]
