@@ -1,0 +1,13 @@
+{
+    "EndTurn": {
+        "startTurn": 8,
+        "initialProbability": 0.5,
+        "growthRate": 0.22
+    },
+    "StartTurn": {
+        "startAP": 2
+    },
+    "StartGame": {
+        "startSkillCardCount": 4
+    }
+}

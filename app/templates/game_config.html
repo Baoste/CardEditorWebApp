@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}设置游戏配置文件{% endblock %}
+
+{% block content %}
+<main class="page-shell config-page-shell">
+    <section class="panel builder-page-header">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">配置</p>
+                <h2>设置游戏配置文件</h2>
+            </div>
+            <div class="deck-toolbar">
+                <a class="secondary-link-button" href="{{ url_for('main.index') }}">返回卡组页</a>
+                <a class="secondary-link-button" href="{{ url_for('main.card_builder') }}">单卡制作页</a>
+            </div>
+        </div>
+        <p class="server-panel-copy">
+            这里编辑的是 <code>data/GameConfig.json</code>。可以先在网页中修改并保存到本地，再上传到游戏服务器；
+            也可以直接从服务器获取 <code>GameConfig.json</code> 覆盖本地配置。
+        </p>
+    </section>
+
+    <section class="panel config-editor-panel">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Game Config</p>
+                <h2>GameConfig.json</h2>
+            </div>
+            <div id="game-config-status" class="status-message">等待载入</div>
+        </div>
+
+        <div class="deck-toolbar config-toolbar">
+            <button id="game-config-reload-button" class="secondary-button" type="button">重新读取本地</button>
+            <button id="game-config-save-button" class="primary-button" type="button">保存到本地</button>
+            <button id="game-config-fetch-server-button" class="secondary-button" type="button">从服务器获取</button>
+            <button id="game-config-upload-server-button" class="primary-button" type="button">上传到服务器</button>
+        </div>
+
+        <div class="config-path-grid">
+            <article class="config-path-card">
+                <span class="config-path-label">本地文件</span>
+                <code id="game-config-local-path">data/GameConfig.json</code>
+            </article>
+            <article class="config-path-card">
+                <span class="config-path-label">服务器文件</span>
+                <code id="game-config-server-path">/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/GameConfig.json</code>
+            </article>
+        </div>
+
+        <div class="config-editor-grid">
+            <div id="game-config-structured-editor" class="config-structured-editor"></div>
+
+            <section class="config-preview-panel">
+                <div class="panel-header config-preview-header">
+                    <div>
+                        <p class="panel-kicker">预览</p>
+                        <h2>JSON Preview</h2>
+                    </div>
+                </div>
+                <pre id="game-config-preview" class="json-preview config-json-preview">{}</pre>
+            </section>
+        </div>
+    </section>
+</main>
+
+<script src="{{ url_for('static', filename='js/game_config.js') }}"></script>
+{% endblock %}

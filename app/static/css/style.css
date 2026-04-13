@@ -43,6 +43,10 @@ input {
     width: min(1880px, calc(100% - 32px));
 }
 
+.config-page-shell {
+    width: min(1480px, calc(100% - 32px));
+}
+
 .server-panel {
     margin-bottom: 20px;
 }
@@ -75,6 +79,93 @@ input {
 
 .builder-search-input {
     margin-bottom: 16px;
+}
+
+.config-editor-panel {
+    display: grid;
+    gap: 16px;
+}
+
+.config-editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.config-structured-editor {
+    display: grid;
+    gap: 16px;
+}
+
+.config-section-block {
+    background: rgba(255, 255, 255, 0.58);
+}
+
+.config-editor-fields {
+    align-items: start;
+}
+
+.config-preview-panel {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.56);
+}
+
+.config-preview-header {
+    margin-bottom: 12px;
+}
+
+.config-json-preview {
+    max-height: 760px;
+    min-height: 240px;
+}
+
+.config-toolbar {
+    justify-content: flex-start;
+}
+
+.config-path-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.config-path-card {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    border: 1px solid rgba(92, 60, 29, 0.12);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.56);
+}
+
+.config-path-label {
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.config-path-card code {
+    overflow-wrap: anywhere;
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.config-json-editor {
+    min-height: 720px;
+}
+
+.config-checkbox-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.config-checkbox-field input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
 }
 
 .builder-form-row {
@@ -1273,6 +1364,8 @@ input {
     .builder-editor-split,
     .builder-flow-shell,
     .builder-flow-inspector-grid,
+    .config-editor-grid,
+    .config-path-grid,
     .builder-participant-top,
     .builder-participant-bottom {
         grid-template-columns: 1fr;

@@ -15,11 +15,16 @@ DATA_DIR = PROJECT_ROOT / "data"
 CARDS_DIR = DATA_DIR / "cards"
 CARD_FLOW_DIR = DATA_DIR / "card_flows"
 DECK_FILE = DATA_DIR / "SkillCardDeck.json"
+GAME_CONFIG_FILE = DATA_DIR / "GameConfig.json"
 CARD_COMPLETION_FILE = DATA_DIR / "CardCompletionStatus.json"
 CARD_FLOW_FILE_PREFIX = "card_flow_"
 GAME_SERVER_DECK_PATH = os.environ.get(
     "CARD_GAME_SERVER_SKILL_CARDS_FILE",
     "/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/SkillCardsT.json",
+)
+GAME_SERVER_CONFIG_PATH = os.environ.get(
+    "CARD_GAME_SERVER_CONFIG_FILE",
+    "/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/GameConfig.json",
 )
 RESTART_SCRIPT_PATH = os.environ.get(
     "CARD_GAME_RESTART_SCRIPT",
@@ -34,6 +39,9 @@ def ensure_data_files():
 
     if not DECK_FILE.exists():
         write_json_file(DECK_FILE, {"cards": []})
+
+    if not GAME_CONFIG_FILE.exists():
+        write_json_file(GAME_CONFIG_FILE, {})
 
     if not CARD_COMPLETION_FILE.exists():
         write_json_file(CARD_COMPLETION_FILE, {})
@@ -246,6 +254,22 @@ def load_deck():
     raise ValueError('SkillCardDeck.json must contain {"cards": [...]}')
 
 
+def normalize_game_config_document(document):
+    if not isinstance(document, dict):
+        raise ValueError("GameConfig.json must be a JSON object.")
+
+    return document
+
+
+def load_game_config(path: Path = GAME_CONFIG_FILE):
+    ensure_data_files()
+    return normalize_game_config_document(read_json_file(path))
+
+
+def write_game_config(path: Path, document):
+    write_json_file(path, normalize_game_config_document(document))
+
+
 def sync_updated_card_into_deck(previous_card, updated_card):
     previous_core = extract_card_core(previous_card)
     updated_core = extract_card_core(updated_card)
@@ -399,6 +423,11 @@ def card_builder():
     return render_template("card_builder.html")
 
 
+@main_bp.route("/game-config")
+def game_config():
+    return render_template("game_config.html")
+
+
 @main_bp.get("/api/cards")
 def get_cards():
     try:
@@ -413,6 +442,101 @@ def get_deck():
         return jsonify({"deck": load_deck()})
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error)}), 500
+
+
+@main_bp.get("/api/game-config")
+def get_game_config():
+    try:
+        return jsonify(
+            {
+                "config": load_game_config(),
+                "localPath": str(GAME_CONFIG_FILE),
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "localPath": str(GAME_CONFIG_FILE)}), 500
+
+
+@main_bp.post("/api/game-config")
+def save_game_config():
+    payload = request.get_json(silent=True) or {}
+    config = payload.get("config")
+
+    if config is None:
+        return jsonify({"error": "config is required."}), 400
+
+    try:
+        write_game_config(GAME_CONFIG_FILE, config)
+        return jsonify(
+            {
+                "config": load_game_config(),
+                "localPath": str(GAME_CONFIG_FILE),
+                "message": "Game config saved locally.",
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "localPath": str(GAME_CONFIG_FILE)}), 500
+
+
+@main_bp.post("/api/game-config/upload-game-server")
+def upload_game_config_to_game_server():
+    payload = request.get_json(silent=True) or {}
+    config = payload.get("config")
+
+    if config is None:
+        return jsonify({"error": "config is required."}), 400
+
+    try:
+        normalized_config = normalize_game_config_document(config)
+        target_path = Path(GAME_SERVER_CONFIG_PATH)
+
+        if not target_path.parent.exists():
+            return jsonify(
+                {
+                    "error": f"Game server path does not exist: {target_path.parent}",
+                    "targetPath": GAME_SERVER_CONFIG_PATH,
+                }
+            ), 500
+
+        write_game_config(GAME_CONFIG_FILE, normalized_config)
+        write_game_config(target_path, normalized_config)
+        return jsonify(
+            {
+                "config": normalized_config,
+                "localPath": str(GAME_CONFIG_FILE),
+                "targetPath": GAME_SERVER_CONFIG_PATH,
+                "message": "Game config uploaded to game server.",
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "targetPath": GAME_SERVER_CONFIG_PATH}), 500
+
+
+@main_bp.post("/api/game-config/fetch-game-server")
+def fetch_game_config_from_game_server():
+    try:
+        target_path = Path(GAME_SERVER_CONFIG_PATH)
+
+        if not target_path.exists():
+            return jsonify(
+                {
+                    "error": f"Game server config not found: {target_path}",
+                    "targetPath": GAME_SERVER_CONFIG_PATH,
+                }
+            ), 404
+
+        config = load_game_config(target_path)
+        write_game_config(GAME_CONFIG_FILE, config)
+        return jsonify(
+            {
+                "config": config,
+                "localPath": str(GAME_CONFIG_FILE),
+                "targetPath": GAME_SERVER_CONFIG_PATH,
+                "message": "Game config fetched from game server.",
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "targetPath": GAME_SERVER_CONFIG_PATH}), 500
 
 
 @main_bp.get("/api/card-file")
