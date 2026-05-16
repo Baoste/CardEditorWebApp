@@ -69,7 +69,7 @@
         },
         "value": {
           "$type": "Game.Domain.ConstValue, Assembly-CSharp",
-          "value": 2
+          "value": 3
         }
       }
     ]
