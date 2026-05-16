@@ -16,6 +16,7 @@ CARDS_DIR = DATA_DIR / "cards"
 CARD_FLOW_DIR = DATA_DIR / "card_flows"
 DECK_FILE = DATA_DIR / "SkillCardDeck.json"
 GAME_CONFIG_FILE = DATA_DIR / "GameConfig.json"
+POINT_CARDS_FILE = DATA_DIR / "PointCards.json"
 CARD_COMPLETION_FILE = DATA_DIR / "CardCompletionStatus.json"
 CARD_FLOW_FILE_PREFIX = "card_flow_"
 GAME_SERVER_DECK_PATH = os.environ.get(
@@ -25,6 +26,10 @@ GAME_SERVER_DECK_PATH = os.environ.get(
 GAME_SERVER_CONFIG_PATH = os.environ.get(
     "CARD_GAME_SERVER_CONFIG_FILE",
     "/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/GameConfig.json",
+)
+GAME_SERVER_POINT_CARDS_PATH = os.environ.get(
+    "CARD_GAME_POINT_CARDS_FILE",
+    "/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/PointCards.json",
 )
 RESTART_SCRIPT_PATH = os.environ.get(
     "CARD_GAME_RESTART_SCRIPT",
@@ -42,6 +47,9 @@ def ensure_data_files():
 
     if not GAME_CONFIG_FILE.exists():
         write_json_file(GAME_CONFIG_FILE, {})
+
+    if not POINT_CARDS_FILE.exists():
+        write_json_file(POINT_CARDS_FILE, {"cards": []})
 
     if not CARD_COMPLETION_FILE.exists():
         write_json_file(CARD_COMPLETION_FILE, {})
@@ -268,6 +276,67 @@ def load_game_config(path: Path = GAME_CONFIG_FILE):
 
 def write_game_config(path: Path, document):
     write_json_file(path, normalize_game_config_document(document))
+
+
+def normalize_point_cards_document(document):
+    if not isinstance(document, dict):
+        raise ValueError("PointCards.json must be a JSON object.")
+
+    cards = document.get("cards")
+    if not isinstance(cards, list):
+        raise ValueError('PointCards.json must contain {"cards": [...]}')
+
+    normalized_cards = []
+    for index, card in enumerate(cards):
+        if not isinstance(card, dict):
+            raise ValueError(f"cards[{index}] must be a JSON object.")
+
+        normalized_card = deepcopy(card)
+
+        for field_name in ("id", "point", "type", "count"):
+            if field_name in normalized_card:
+                try:
+                    normalized_card[field_name] = int(normalized_card[field_name])
+                except (TypeError, ValueError) as error:
+                    raise ValueError(f"cards[{index}].{field_name} must be an integer.") from error
+
+        if "effects" in normalized_card and not isinstance(normalized_card["effects"], list):
+            raise ValueError(f"cards[{index}].effects must be an array.")
+
+        normalized_cards.append(normalized_card)
+
+    return {"cards": normalized_cards}
+
+
+def load_point_cards(path: Path = POINT_CARDS_FILE):
+    ensure_data_files()
+    return normalize_point_cards_document(read_json_file(path))
+
+
+def write_point_cards(path: Path, document):
+    write_json_file(path, normalize_point_cards_document(document))
+
+
+def merge_point_card_counts(base_document, updated_document):
+    normalized_base = normalize_point_cards_document(base_document)
+    normalized_updated = normalize_point_cards_document(updated_document)
+    updated_counts_by_id = {}
+
+    for card in normalized_updated["cards"]:
+        card_id = card.get("id")
+        if card_id is None:
+            continue
+        updated_counts_by_id[int(card_id)] = int(card.get("count", 0))
+
+    merged_cards = []
+    for card in normalized_base["cards"]:
+        merged_card = deepcopy(card)
+        card_id = merged_card.get("id")
+        if card_id is not None and int(card_id) in updated_counts_by_id:
+            merged_card["count"] = updated_counts_by_id[int(card_id)]
+        merged_cards.append(merged_card)
+
+    return {"cards": merged_cards}
 
 
 def sync_updated_card_into_deck(previous_card, updated_card):
@@ -537,6 +606,102 @@ def fetch_game_config_from_game_server():
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error), "targetPath": GAME_SERVER_CONFIG_PATH}), 500
+
+
+@main_bp.get("/api/point-cards")
+def get_point_cards():
+    try:
+        return jsonify(
+            {
+                "document": load_point_cards(),
+                "localPath": str(POINT_CARDS_FILE),
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "localPath": str(POINT_CARDS_FILE)}), 500
+
+
+@main_bp.post("/api/point-cards")
+def save_point_cards():
+    payload = request.get_json(silent=True) or {}
+    document = payload.get("document")
+
+    if document is None:
+        return jsonify({"error": "document is required."}), 400
+
+    try:
+        merged_document = merge_point_card_counts(load_point_cards(), document)
+        write_point_cards(POINT_CARDS_FILE, merged_document)
+        return jsonify(
+            {
+                "document": load_point_cards(),
+                "localPath": str(POINT_CARDS_FILE),
+                "message": "Point cards saved locally.",
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "localPath": str(POINT_CARDS_FILE)}), 500
+
+
+@main_bp.post("/api/point-cards/upload-game-server")
+def upload_point_cards_to_game_server():
+    payload = request.get_json(silent=True) or {}
+    document = payload.get("document")
+
+    if document is None:
+        return jsonify({"error": "document is required."}), 400
+
+    try:
+        merged_document = merge_point_card_counts(load_point_cards(), document)
+        target_path = Path(GAME_SERVER_POINT_CARDS_PATH)
+
+        if not target_path.parent.exists():
+            return jsonify(
+                {
+                    "error": f"Game server path does not exist: {target_path.parent}",
+                    "targetPath": GAME_SERVER_POINT_CARDS_PATH,
+                }
+            ), 500
+
+        write_point_cards(POINT_CARDS_FILE, merged_document)
+        write_point_cards(target_path, merged_document)
+        return jsonify(
+            {
+                "document": merged_document,
+                "localPath": str(POINT_CARDS_FILE),
+                "targetPath": GAME_SERVER_POINT_CARDS_PATH,
+                "message": "Point cards uploaded to game server.",
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "targetPath": GAME_SERVER_POINT_CARDS_PATH}), 500
+
+
+@main_bp.post("/api/point-cards/fetch-game-server")
+def fetch_point_cards_from_game_server():
+    try:
+        target_path = Path(GAME_SERVER_POINT_CARDS_PATH)
+
+        if not target_path.exists():
+            return jsonify(
+                {
+                    "error": f"Game server point cards not found: {target_path}",
+                    "targetPath": GAME_SERVER_POINT_CARDS_PATH,
+                }
+            ), 404
+
+        document = load_point_cards(target_path)
+        write_point_cards(POINT_CARDS_FILE, document)
+        return jsonify(
+            {
+                "document": document,
+                "localPath": str(POINT_CARDS_FILE),
+                "targetPath": GAME_SERVER_POINT_CARDS_PATH,
+                "message": "Point cards fetched from game server.",
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "targetPath": GAME_SERVER_POINT_CARDS_PATH}), 500
 
 
 @main_bp.get("/api/card-file")

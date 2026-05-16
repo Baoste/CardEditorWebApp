@@ -19,6 +19,9 @@
             这里编辑的是 <code>data/GameConfig.json</code>。可以先在网页中修改并保存到本地，再上传到游戏服务器；
             也可以直接从服务器获取 <code>GameConfig.json</code> 覆盖本地配置。
         </p>
+        <p class="server-panel-copy">
+            下面还可以管理 <code>data/PointCards.json</code>，用于读取、修改并上传服务器上的 <code>PointCards.json</code>。
+        </p>
     </section>
 
     <section class="panel config-editor-panel">
@@ -59,6 +62,50 @@
                     </div>
                 </div>
                 <pre id="game-config-preview" class="json-preview config-json-preview">{}</pre>
+            </section>
+        </div>
+    </section>
+
+    <section class="panel config-editor-panel">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Point Cards</p>
+                <h2>PointCards.json</h2>
+            </div>
+            <div id="point-cards-status" class="status-message">等待载入</div>
+        </div>
+
+        <div class="deck-toolbar config-toolbar">
+            <button id="point-cards-reload-button" class="secondary-button" type="button">重新读取本地</button>
+            <button id="point-cards-save-button" class="primary-button" type="button">保存到本地</button>
+            <button id="point-cards-fetch-server-button" class="secondary-button" type="button">从服务器获取</button>
+            <button id="point-cards-upload-server-button" class="primary-button" type="button">上传到服务器</button>
+        </div>
+
+        <div class="config-path-grid">
+            <article class="config-path-card">
+                <span class="config-path-label">本地文件</span>
+                <code id="point-cards-local-path">data/PointCards.json</code>
+            </article>
+            <article class="config-path-card">
+                <span class="config-path-label">服务器文件</span>
+                <code id="point-cards-server-path">/home/ubuntu/CardGameForLinux/CardGameServer_Data/StreamingAssets/PointCards.json</code>
+            </article>
+        </div>
+
+        <div class="config-editor-grid">
+            <div id="point-cards-structured-editor" class="config-structured-editor"></div>
+
+            <section class="config-preview-panel">
+                <div class="panel-header config-preview-header">
+                    <div>
+                        <p class="panel-kicker">预览</p>
+                        <h2>JSON Preview</h2>
+                    </div>
+                </div>
+                <pre id="point-cards-preview" class="json-preview config-json-preview">{
+  "cards": []
+}</pre>
             </section>
         </div>
     </section>

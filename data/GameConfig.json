@@ -5,6 +5,7 @@
     "startTurn": 8
   },
   "StartGame": {
+    "maxSkillCardCount": 7,
     "startSkillCardCount": 4
   },
   "StartTurn": {

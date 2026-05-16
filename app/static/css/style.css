@@ -102,6 +102,72 @@ input {
     background: rgba(255, 255, 255, 0.58);
 }
 
+.point-cards-slider-panel {
+    background: linear-gradient(180deg, rgba(255, 251, 244, 0.92), rgba(255, 255, 255, 0.72));
+}
+
+.point-cards-chart-header {
+    margin-bottom: 12px;
+}
+
+.point-cards-chart-scale {
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.point-cards-slider-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.point-card-slider-row {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) 52px;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid rgba(92, 60, 29, 0.12);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.point-card-slider-meta {
+    display: grid;
+    gap: 2px;
+    align-content: center;
+}
+
+.point-card-slider-point {
+    font-weight: 700;
+    font-size: 0.96rem;
+}
+
+.point-card-slider-id {
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.point-card-slider-track-wrap {
+    min-width: 0;
+}
+
+.point-card-range {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.point-card-slider-value {
+    min-width: 0;
+    padding: 8px 6px;
+    border-radius: 12px;
+    background: rgba(181, 92, 43, 0.12);
+    color: var(--accent-strong);
+    font-weight: 700;
+    text-align: center;
+}
+
 .config-editor-fields {
     align-items: start;
 }
@@ -1434,6 +1500,15 @@ input {
     .deck-card-actions {
         width: 100%;
         justify-content: flex-end;
+    }
+
+    .point-cards-slider-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .point-card-slider-row {
+        grid-template-columns: 72px minmax(0, 1fr) 46px;
+        gap: 10px;
     }
 
     .hover-preview {
