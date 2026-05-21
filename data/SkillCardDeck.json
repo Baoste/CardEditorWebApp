@@ -536,7 +536,7 @@
     {
       "id": 1104,
       "name": "孤注一掷",
-      "description": "丢弃所有点数牌，重新抽三张点数牌",
+      "description": "丢弃所有点数牌和技能牌，重新抽三张点数牌",
       "point": 2,
       "type": 1,
       "count": 2,
@@ -559,6 +559,39 @@
           },
           "target": {
             "participantType": 4,
+            "filter": {
+              "$type": "Game.Domain.AllCondition, Assembly-CSharp"
+            },
+            "participantSelectionMode": {
+              "$type": "SelectionModeAll, Assembly-CSharp"
+            },
+            "maxSelectCount": {
+              "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+            }
+          },
+          "value": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          },
+          "effectAnimationType": 4
+        },
+        {
+          "type": 3,
+          "trueNode": 2,
+          "falseNode": -1,
+          "source": {
+            "participantType": 0,
+            "filter": {
+              "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+            },
+            "participantSelectionMode": {
+              "$type": "SelectionModeNone, Assembly-CSharp"
+            },
+            "maxSelectCount": {
+              "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+            }
+          },
+          "target": {
+            "participantType": 1,
             "filter": {
               "$type": "Game.Domain.AllCondition, Assembly-CSharp"
             },
