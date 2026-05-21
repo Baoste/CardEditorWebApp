@@ -2,7 +2,7 @@
   "card": {
     "id": 1005,
     "name": "置换",
-    "description": "弃一张技能牌，抽两张技能牌",
+    "description": "随机弃一张技能牌，抽两张技能牌",
     "point": 1,
     "type": 1,
     "count": 2,
@@ -11,6 +11,7 @@
         "type": 3,
         "trueNode": 1,
         "falseNode": -1,
+        "effectAnimationType": 3,
         "source": {
           "participantType": 0,
           "filter": {
@@ -29,7 +30,7 @@
             "$type": "Game.Domain.AllCondition, Assembly-CSharp"
           },
           "participantSelectionMode": {
-            "$type": "SelectionModeChoose, Assembly-CSharp"
+            "$type": "SelectionModeRandom, Assembly-CSharp"
           },
           "maxSelectCount": {
             "$type": "Game.Domain.ConstValue, Assembly-CSharp",
@@ -38,13 +39,13 @@
         },
         "value": {
           "$type": "Game.Domain.NoneValue, Assembly-CSharp"
-        },
-        "effectAnimationType": 3
+        }
       },
       {
         "type": 1,
         "trueNode": -1,
         "falseNode": -1,
+        "effectAnimationType": 1,
         "source": {
           "participantType": 0,
           "filter": {
@@ -72,8 +73,7 @@
         "value": {
           "$type": "Game.Domain.ConstValue, Assembly-CSharp",
           "value": 2
-        },
-        "effectAnimationType": 1
+        }
       }
     ]
   }

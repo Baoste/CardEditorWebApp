@@ -5,12 +5,13 @@
     "description": "获得两个行动点",
     "point": 1,
     "type": 1,
-    "count": 1,
+    "count": 2,
     "effects": [
       {
         "type": 7,
         "trueNode": -1,
         "falseNode": -1,
+        "effectAnimationType": 8,
         "source": {
           "participantType": 0,
           "filter": {
@@ -38,8 +39,7 @@
         "value": {
           "$type": "Game.Domain.ConstValue, Assembly-CSharp",
           "value": 2
-        },
-        "effectAnimationType": 8
+        }
       }
     ]
   }

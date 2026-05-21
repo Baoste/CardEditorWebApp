@@ -24,7 +24,7 @@
       "description": "点数牌3",
       "point": 3,
       "type": 0,
-      "count": 8,
+      "count": 6,
       "effects": []
     },
     {
@@ -33,7 +33,7 @@
       "description": "点数牌4",
       "point": 4,
       "type": 0,
-      "count": 8,
+      "count": 6,
       "effects": []
     },
     {
@@ -42,7 +42,7 @@
       "description": "点数牌5",
       "point": 5,
       "type": 0,
-      "count": 8,
+      "count": 6,
       "effects": []
     },
     {
@@ -51,7 +51,7 @@
       "description": "点数牌6",
       "point": 6,
       "type": 0,
-      "count": 8,
+      "count": 6,
       "effects": []
     },
     {
@@ -60,7 +60,7 @@
       "description": "点数牌7",
       "point": 7,
       "type": 0,
-      "count": 8,
+      "count": 0,
       "effects": []
     },
     {
@@ -69,7 +69,7 @@
       "description": "点数牌8",
       "point": 8,
       "type": 0,
-      "count": 8,
+      "count": 0,
       "effects": []
     },
     {
@@ -78,7 +78,7 @@
       "description": "点数牌9",
       "point": 9,
       "type": 0,
-      "count": 8,
+      "count": 0,
       "effects": []
     },
     {
@@ -87,7 +87,7 @@
       "description": "点数牌10",
       "point": 10,
       "type": 0,
-      "count": 8,
+      "count": 0,
       "effects": []
     }
   ]
