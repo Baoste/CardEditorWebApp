@@ -1,0 +1,15 @@
+{
+  "options": [
+    { "value": 0, "label": "DrawPoint_Normal" },
+    { "value": 1, "label": "DrawSkill_Normal" },
+    { "value": 2, "label": "DrawPointToResolve_Normal" },
+    { "value": 3, "label": "Discard_Normal" },
+    { "value": 4, "label": "Discard_Lazer" },
+    { "value": 5, "label": "ModifyPoint_Normal" },
+    { "value": 6, "label": "Move_Normal" },
+    { "value": 7, "label": "Judge_Normal" },
+    { "value": 8, "label": "AddActionPoint_Normal" },
+    { "value": 9, "label": "Peek_Normal" },
+    { "value": 10, "label": "ChangeCardState_Normal" }
+  ]
+}

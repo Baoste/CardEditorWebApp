@@ -17,6 +17,7 @@ CARD_FLOW_DIR = DATA_DIR / "card_flows"
 DECK_FILE = DATA_DIR / "SkillCardDeck.json"
 GAME_CONFIG_FILE = DATA_DIR / "GameConfig.json"
 POINT_CARDS_FILE = DATA_DIR / "PointCards.json"
+EFFECT_ANIMATION_OPTIONS_FILE = DATA_DIR / "EffectAnimationOptions.json"
 CARD_COMPLETION_FILE = DATA_DIR / "CardCompletionStatus.json"
 CARD_FLOW_FILE_PREFIX = "card_flow_"
 GAME_SERVER_DECK_PATH = os.environ.get(
@@ -37,6 +38,34 @@ RESTART_SCRIPT_PATH = os.environ.get(
 )
 
 
+DEFAULT_EFFECT_ANIMATION_OPTIONS = [
+    {"value": 0, "label": "DrawPoint_Normal"},
+    {"value": 1, "label": "DrawSkill_Normal"},
+    {"value": 2, "label": "DrawPointToResolve_Normal"},
+    {"value": 3, "label": "Discard_Normal"},
+    {"value": 4, "label": "Discard_Lazer"},
+    {"value": 5, "label": "ModifyPoint_Normal"},
+    {"value": 6, "label": "Move_Normal"},
+    {"value": 7, "label": "Judge_Normal"},
+    {"value": 8, "label": "AddActionPoint_Normal"},
+    {"value": 9, "label": "Peek_Normal"},
+    {"value": 10, "label": "ChangeCardState_Normal"},
+]
+
+EFFECT_TYPE_LABELS = {
+    0: "DrawPoint",
+    1: "DrawSkill",
+    2: "DrawPointToResolve",
+    3: "Discard",
+    4: "ModifyPoint",
+    5: "Move",
+    6: "Judge",
+    7: "AddActionPoint",
+    8: "Peek",
+    9: "ChangeCardState",
+}
+
+
 def ensure_data_files():
     CARDS_DIR.mkdir(parents=True, exist_ok=True)
     CARD_FLOW_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,6 +79,9 @@ def ensure_data_files():
 
     if not POINT_CARDS_FILE.exists():
         write_json_file(POINT_CARDS_FILE, {"cards": []})
+
+    if not EFFECT_ANIMATION_OPTIONS_FILE.exists():
+        write_json_file(EFFECT_ANIMATION_OPTIONS_FILE, {"options": DEFAULT_EFFECT_ANIMATION_OPTIONS})
 
     if not CARD_COMPLETION_FILE.exists():
         write_json_file(CARD_COMPLETION_FILE, {})
@@ -80,16 +112,85 @@ def write_deck_file(path: Path, cards):
 
 def extract_card_core(card):
     if isinstance(card, dict) and isinstance(card.get("card"), dict):
-        return deepcopy(card["card"])
+        return ensure_effect_animation_fields_on_card(deepcopy(card["card"]))
 
     if isinstance(card, dict):
-        return deepcopy(card)
+        return ensure_effect_animation_fields_on_card(deepcopy(card))
 
     raise ValueError("Card data must be a JSON object.")
 
 
 def normalize_deck_cards(cards):
     return [extract_card_core(card) for card in cards]
+
+
+def ensure_effect_animation_fields_on_card(card_core):
+    if not isinstance(card_core, dict):
+        return card_core
+
+    effects = card_core.get("effects")
+    if not isinstance(effects, list):
+        return card_core
+
+    normalized_effects = []
+    changed = False
+    effect_animation_options = load_effect_animation_options()
+
+    for effect in effects:
+        if not isinstance(effect, dict):
+            normalized_effects.append(effect)
+            continue
+
+        normalized_effect = deepcopy(effect)
+        expected_animation = resolve_effect_animation_type(
+            effect_type=normalized_effect.get("type", 0),
+            current_animation_type=normalized_effect.get("effectAnimationType"),
+            options=effect_animation_options,
+        )
+        if normalized_effect.get("effectAnimationType") != expected_animation:
+            normalized_effect["effectAnimationType"] = expected_animation
+            changed = True
+        normalized_effects.append(normalized_effect)
+
+    if changed:
+        card_core["effects"] = normalized_effects
+
+    return card_core
+
+
+def resolve_effect_animation_type(effect_type, current_animation_type, options):
+    try:
+        normalized_effect_type = int(effect_type)
+    except (TypeError, ValueError):
+        normalized_effect_type = 0
+
+    prefix = EFFECT_TYPE_LABELS.get(normalized_effect_type, "")
+    if not prefix:
+        return 0
+
+    matching_options = [
+        option for option in options
+        if str(option.get("label", "")).split("_")[0] == prefix
+    ]
+    if not matching_options:
+        return 0
+
+    try:
+        normalized_current = int(current_animation_type)
+    except (TypeError, ValueError):
+        normalized_current = None
+
+    if normalized_current is not None and any(int(option["value"]) == normalized_current for option in matching_options):
+        return normalized_current
+
+    normal_option = next(
+        (option for option in matching_options if str(option.get("label", "")).endswith("_Normal")),
+        None,
+    )
+    if normal_option is not None:
+        return int(normal_option["value"])
+
+    return int(matching_options[0]["value"])
 
 
 def load_card_completion_statuses():
@@ -254,10 +355,16 @@ def load_deck():
     deck_document = read_json_file(DECK_FILE)
 
     if isinstance(deck_document, list):
-        return normalize_deck_cards(deck_document)
+        normalized_cards = normalize_deck_cards(deck_document)
+        if deck_document != normalized_cards:
+            write_deck_file(DECK_FILE, normalized_cards)
+        return normalized_cards
 
     if isinstance(deck_document, dict) and isinstance(deck_document.get("cards"), list):
-        return normalize_deck_cards(deck_document["cards"])
+        normalized_cards = normalize_deck_cards(deck_document["cards"])
+        if deck_document.get("cards") != normalized_cards:
+            write_deck_file(DECK_FILE, normalized_cards)
+        return normalized_cards
 
     raise ValueError('SkillCardDeck.json must contain {"cards": [...]}')
 
@@ -276,6 +383,47 @@ def load_game_config(path: Path = GAME_CONFIG_FILE):
 
 def write_game_config(path: Path, document):
     write_json_file(path, normalize_game_config_document(document))
+
+
+def normalize_effect_animation_options_document(document):
+    if not isinstance(document, dict):
+        raise ValueError("EffectAnimationOptions.json must be a JSON object.")
+
+    options = document.get("options")
+    if not isinstance(options, list):
+        raise ValueError('EffectAnimationOptions.json must contain {"options": [...]}')
+
+    normalized_options = []
+    for index, option in enumerate(options):
+        if not isinstance(option, dict):
+            raise ValueError(f"options[{index}] must be a JSON object.")
+
+        value = option.get("value")
+        label = option.get("label")
+
+        try:
+            normalized_value = int(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"options[{index}].value must be an integer.") from error
+
+        normalized_label = str(label or "").strip()
+        if not normalized_label:
+            raise ValueError(f"options[{index}].label cannot be empty.")
+
+        normalized_options.append(
+            {
+                "value": normalized_value,
+                "label": normalized_label,
+            }
+        )
+
+    return {"options": normalized_options}
+
+
+def load_effect_animation_options(path: Path = EFFECT_ANIMATION_OPTIONS_FILE):
+    ensure_data_files()
+    document = normalize_effect_animation_options_document(read_json_file(path))
+    return document["options"]
 
 
 def normalize_point_cards_document(document):
@@ -511,6 +659,19 @@ def get_deck():
         return jsonify({"deck": load_deck()})
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return jsonify({"error": str(error)}), 500
+
+
+@main_bp.get("/api/effect-animation-options")
+def get_effect_animation_options():
+    try:
+        return jsonify(
+            {
+                "options": load_effect_animation_options(),
+                "localPath": str(EFFECT_ANIMATION_OPTIONS_FILE),
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify({"error": str(error), "localPath": str(EFFECT_ANIMATION_OPTIONS_FILE)}), 500
 
 
 @main_bp.get("/api/game-config")

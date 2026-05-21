@@ -88,6 +88,7 @@ const builderState = {
     currentFlow: null,
     selectedFlowNodeId: "",
     selectedFlowEdgeId: "",
+    effectAnimationOptions: [],
 };
 
 const builderElements = {
@@ -229,6 +230,7 @@ function createEffect() {
         source: createParticipantSpec(),
         target: createParticipantSpec(),
         value: createValueExpr(),
+        effectAnimationType: 0,
     };
 }
 
@@ -310,6 +312,7 @@ function ensureDocument(document) {
         type: Number(effect?.type ?? 0),
         trueNode: Number(effect?.trueNode ?? -1),
         falseNode: Number(effect?.falseNode ?? -1),
+        effectAnimationType: normalizeEffectAnimationValue(effect?.type ?? 0, effect?.effectAnimationType ?? 0),
         source: {
             participantType: Number(effect?.source?.participantType ?? 0),
             filter: ensureConditionExpr(effect?.source?.filter),
@@ -771,6 +774,39 @@ function renderSelect(options, selected, attrs) {
     return `<select ${attrs}>${options.map((option) => `<option value="${escapeHtml(option.value ?? option)}" ${String(option.value ?? option) === String(selected) ? "selected" : ""}>${escapeHtml(option.label ?? option)}</option>`).join("")}</select>`;
 }
 
+function getEffectAnimationOptions() {
+    if (builderState.effectAnimationOptions.length) {
+        return builderState.effectAnimationOptions;
+    }
+
+    return [{ value: 0, label: "0" }];
+}
+
+function getEffectTypeLabel(effectType) {
+    return EFFECT_TYPE_OPTIONS.find((item) => Number(item.value) === Number(effectType))?.label || "";
+}
+
+function getEffectAnimationOptionsForEffectType(effectType) {
+    const effectTypeLabel = getEffectTypeLabel(effectType);
+    const options = getEffectAnimationOptions();
+
+    if (!effectTypeLabel) {
+        return options;
+    }
+
+    const filteredOptions = options.filter((option) => String(option.label ?? "").split("_")[0] === effectTypeLabel);
+    return filteredOptions.length ? filteredOptions : options;
+}
+
+function normalizeEffectAnimationValue(effectType, effectAnimationType) {
+    const options = getEffectAnimationOptionsForEffectType(effectType);
+    const hasExactMatch = options.some((option) => Number(option.value) === Number(effectAnimationType));
+    if (hasExactMatch) {
+        return Number(effectAnimationType);
+    }
+    return Number(options[0]?.value ?? 0);
+}
+
 function renderInput(path, label, value, kind = "string", type = "text", wide = false) {
     return `<label class="editor-field ${wide ? "editor-field-wide" : ""}"><span>${escapeHtml(label)}</span><input type="${type}" data-bind="${path}" data-kind="${kind}" value="${escapeHtml(value ?? "")}"></label>`;
 }
@@ -859,7 +895,7 @@ function renderParticipantSpec(spec, path, title) {
 
 function renderEffect(effect, index) {
     const open = builderState.effectFoldouts[index] !== false;
-    return `<article class="builder-effect-card"><div class="builder-effect-header"><button class="builder-fold-button" type="button" data-action="toggle-effect" data-index="${index}">${open ? "▾" : "▸"} Effect #${index} [${escapeHtml(EFFECT_TYPE_OPTIONS.find((item) => item.value === effect.type)?.label || effect.type)}]</button><div class="builder-effect-actions"><button class="ghost-button" type="button" data-action="move-up" data-index="${index}" ${index === 0 ? "disabled" : ""}>↑</button><button class="ghost-button" type="button" data-action="move-down" data-index="${index}" ${index === getCardCore(builderState.currentDocument).effects.length - 1 ? "disabled" : ""}>↓</button><button class="ghost-button builder-delete-button" type="button" data-action="remove-effect" data-index="${index}">X</button></div></div>${open ? `<div class="builder-effect-body"><div class="builder-subgrid"><label class="editor-field"><span>Type</span>${renderSelect(EFFECT_TYPE_OPTIONS, effect.type, `data-bind="card.effects.${index}.type" data-kind="int"`)} </label>${renderInput(`card.effects.${index}.trueNode`, "TrueNode", effect.trueNode, "int", "number")}${renderInput(`card.effects.${index}.falseNode`, "FalseNode", effect.falseNode, "int", "number")}</div>${renderParticipantSpec(effect.source, `card.effects.${index}.source`, "Source")}${renderParticipantSpec(effect.target, `card.effects.${index}.target`, "Target")}${renderValueExpr(effect.value, `card.effects.${index}.value`, "Value")}</div>` : ""}</article>`;
+    return `<article class="builder-effect-card"><div class="builder-effect-header"><button class="builder-fold-button" type="button" data-action="toggle-effect" data-index="${index}">${open ? "▾" : "▸"} Effect #${index} [${escapeHtml(EFFECT_TYPE_OPTIONS.find((item) => item.value === effect.type)?.label || effect.type)}]</button><div class="builder-effect-actions"><button class="ghost-button" type="button" data-action="move-up" data-index="${index}" ${index === 0 ? "disabled" : ""}>↑</button><button class="ghost-button" type="button" data-action="move-down" data-index="${index}" ${index === getCardCore(builderState.currentDocument).effects.length - 1 ? "disabled" : ""}>↓</button><button class="ghost-button builder-delete-button" type="button" data-action="remove-effect" data-index="${index}">X</button></div></div>${open ? `<div class="builder-effect-body"><div class="builder-subgrid"><label class="editor-field"><span>Type</span>${renderSelect(EFFECT_TYPE_OPTIONS, effect.type, `data-bind="card.effects.${index}.type" data-kind="int"`)} </label><label class="editor-field"><span>Effect Animation</span>${renderSelect(getEffectAnimationOptionsForEffectType(effect.type), normalizeEffectAnimationValue(effect.type, effect.effectAnimationType ?? 0), `data-bind="card.effects.${index}.effectAnimationType" data-kind="int"`)} </label><div class="builder-nested-columns builder-effect-node-row">${renderInput(`card.effects.${index}.trueNode`, "TrueNode", effect.trueNode, "int", "number")}${renderInput(`card.effects.${index}.falseNode`, "FalseNode", effect.falseNode, "int", "number")}</div></div>${renderParticipantSpec(effect.source, `card.effects.${index}.source`, "Source")}${renderParticipantSpec(effect.target, `card.effects.${index}.target`, "Target")}${renderValueExpr(effect.value, `card.effects.${index}.value`, "Value")}</div>` : ""}</article>`;
 }
 
 function validateCurrentDocument() {
@@ -1000,8 +1036,12 @@ function renderBuilderCardList() {
 async function loadCards() {
     builderSetStatus("正在读取卡牌文件...");
     try {
-        const response = await requestJson("/api/cards");
-        builderState.cards = response.cards;
+        const [cardsResponse, effectAnimationResponse] = await Promise.all([
+            requestJson("/api/cards"),
+            requestJson("/api/effect-animation-options"),
+        ]);
+        builderState.cards = cardsResponse.cards;
+        builderState.effectAnimationOptions = effectAnimationResponse.options || [];
         syncCompletionPanel();
         renderBuilderCardList();
         builderSetStatus("卡牌文件已加载");
@@ -1201,12 +1241,20 @@ builderElements.structuredEditor.addEventListener("change", (event) => {
             value = value === "" ? 0 : Number(value);
             if (Number.isNaN(value)) value = 0;
         }
-        setByPath(builderState.currentDocument, event.target.dataset.bind, value);
-        if (event.target.dataset.bind === "card.id") {
+        const bindPath = String(event.target.dataset.bind);
+        setByPath(builderState.currentDocument, bindPath, value);
+        if (bindPath === "card.id") {
             syncCompletionPanel();
             syncFlowCardIdFromDocument();
         }
-        if (String(event.target.dataset.bind).endsWith(".participantType")) {
+        if (/^card\.effects\.\d+\.type$/.test(bindPath)) {
+            const effectPath = bindPath.replace(/\.type$/, "");
+            const effect = getByPath(builderState.currentDocument, effectPath);
+            if (effect) {
+                effect.effectAnimationType = normalizeEffectAnimationValue(effect.type, effect.effectAnimationType ?? 0);
+            }
+            renderStructuredEditor();
+        } else if (bindPath.endsWith(".participantType")) {
             renderStructuredEditor();
         }
     } else if (event.target.dataset.valuePath) {
