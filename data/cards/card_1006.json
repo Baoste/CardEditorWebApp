@@ -1,0 +1,120 @@
+{
+  "card": {
+    "id": 1006,
+    "name": "变幻",
+    "description": "变化场上的一张牌",
+    "point": 0,
+    "type": 1,
+    "count": 2,
+    "effects": [
+      {
+        "type": 2,
+        "trueNode": 1,
+        "falseNode": -1,
+        "effectAnimationType": 2,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 384,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeAll, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        }
+      },
+      {
+        "type": 6,
+        "trueNode": 2,
+        "falseNode": 3,
+        "effectAnimationType": 7,
+        "source": {
+          "participantType": 128,
+          "filter": {
+            "$type": "Game.Domain.CompareCondition, Assembly-CSharp",
+            "left": {
+              "$type": "Game.Domain.VariableValue, Assembly-CSharp",
+              "source": 6
+            },
+            "right": {
+              "$type": "Game.Domain.VariableValue, Assembly-CSharp",
+              "source": 0
+            },
+            "op": 0
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeAll, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        }
+      },
+      {
+        "type": 3,
+        "trueNode": 4,
+        "falseNode": -1,
+        "source": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeChoose, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "target": {
+          "participantType": 0,
+          "filter": {
+            "$type": "Game.Domain.NoneCondition, Assembly-CSharp"
+          },
+          "participantSelectionMode": {
+            "$type": "SelectionModeNone, Assembly-CSharp"
+          },
+          "maxSelectCount": {
+            "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+          }
+        },
+        "value": {
+          "$type": "Game.Domain.NoneValue, Assembly-CSharp"
+        },
+        "effectAnimationType": 3
+      }
+    ]
+  }
+}

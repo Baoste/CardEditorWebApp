@@ -1,0 +1,11 @@
+{
+  "cardId": 1006,
+  "engine": "drawflow",
+  "drawflow": {
+    "drawflow": {
+      "Home": {
+        "data": {}
+      }
+    }
+  }
+}
