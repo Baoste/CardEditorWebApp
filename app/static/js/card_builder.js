@@ -190,7 +190,13 @@ function isPlainObject(value) {
 function createValueExpr(kind = "NoneValue") {
     if (kind === "ConstValue") return { "$type": TYPE_NAMES.ConstValue, value: 0 };
     if (kind === "VariableValue") return { "$type": TYPE_NAMES.VariableValue, source: 0 };
-    if (kind === "RandomValue") return { "$type": TYPE_NAMES.RandomValue, valueMin: 0, valueMax: 0 };
+    if (kind === "RandomValue") {
+        return {
+            "$type": TYPE_NAMES.RandomValue,
+            valueMin: createValueExpr("ConstValue"),
+            valueMax: createValueExpr("ConstValue"),
+        };
+    }
     if (kind === "BinaryValue") {
         return { "$type": TYPE_NAMES.BinaryValue, left: createValueExpr(), right: createValueExpr(), op: 0 };
     }
@@ -293,10 +299,14 @@ function ensureValueExpr(value) {
     if (kind === "ConstValue") return { "$type": TYPE_NAMES.ConstValue, value: Number(value?.value ?? 0) };
     if (kind === "VariableValue") return { "$type": TYPE_NAMES.VariableValue, source: Number(value?.source ?? 0) };
     if (kind === "RandomValue") {
+        const legacyMin = typeof value?.valueMin === "number" ? { "$type": TYPE_NAMES.ConstValue, value: Number(value.valueMin) } : value?.valueMin;
+        const legacyMax = typeof value?.valueMax === "number" ? { "$type": TYPE_NAMES.ConstValue, value: Number(value.valueMax) } : value?.valueMax;
+        const legacyValue0 = typeof value?.value0 === "number" ? { "$type": TYPE_NAMES.ConstValue, value: Number(value.value0) } : undefined;
+        const legacyValue1 = typeof value?.value1 === "number" ? { "$type": TYPE_NAMES.ConstValue, value: Number(value.value1) } : undefined;
         return {
             "$type": TYPE_NAMES.RandomValue,
-            valueMin: Number(value?.valueMin ?? value?.value0 ?? 0),
-            valueMax: Number(value?.valueMax ?? value?.value1 ?? 0),
+            valueMin: ensureValueExpr(legacyMin ?? legacyValue0 ?? createValueExpr("ConstValue")),
+            valueMax: ensureValueExpr(legacyMax ?? legacyValue1 ?? createValueExpr("ConstValue")),
         };
     }
     if (kind === "BinaryValue") return { "$type": TYPE_NAMES.BinaryValue, left: ensureValueExpr(value?.left), right: ensureValueExpr(value?.right), op: Number(value?.op ?? 0) };
@@ -858,7 +868,7 @@ function renderValueExpr(value, path, title) {
     let body = `<div class="builder-static-note">No value</div>`;
     if (kind === "ConstValue") body = renderInput(`${path}.value`, "Value", value.value, "int", "number");
     if (kind === "VariableValue") body = `<label class="editor-field"><span>Source</span>${renderSelect(VALUE_SOURCE_OPTIONS, value.source ?? 0, `data-bind="${path}.source" data-kind="int"`)} </label>`;
-    if (kind === "RandomValue") body = `<div class="builder-nested-columns">${renderInput(`${path}.valueMin`, "Min", value.valueMin, "int", "number")}${renderInput(`${path}.valueMax`, "Max", value.valueMax, "int", "number")}</div>`;
+    if (kind === "RandomValue") body = `<div class="builder-nested-columns">${renderValueExpr(value.valueMin, `${path}.valueMin`, "Min")}${renderValueExpr(value.valueMax, `${path}.valueMax`, "Max")}</div>`;
     if (kind === "BinaryValue") body = `<label class="editor-field"><span>Op</span>${renderSelect(BINARY_OP_OPTIONS, value.op ?? 0, `data-bind="${path}.op" data-kind="int"`)} </label><div class="builder-nested-columns">${renderValueExpr(value.left, `${path}.left`, "Left")}${renderValueExpr(value.right, `${path}.right`, "Right")}</div>`;
     return `<section class="builder-nested-block"><h4 class="builder-section-heading">${escapeHtml(title)}</h4><label class="editor-field"><span>Value Type</span>${renderSelect(VALUE_EXPR_OPTIONS, kind, `data-value-path="${path}"`)}</label>${body}</section>`;
 }
