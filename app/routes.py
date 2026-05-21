@@ -414,6 +414,138 @@ def load_effect_animation_options(path: Path = EFFECT_ANIMATION_OPTIONS_FILE):
     return document["options"]
 
 
+def load_effect_animation_options_document(path: Path = EFFECT_ANIMATION_OPTIONS_FILE):
+    ensure_data_files()
+    return normalize_effect_animation_options_document(read_json_file(path))
+
+
+def write_effect_animation_options(path: Path, document):
+    write_json_file(path, normalize_effect_animation_options_document(document))
+
+
+def build_effect_type_options():
+    return [
+        {"value": value, "label": label}
+        for value, label in sorted(EFFECT_TYPE_LABELS.items(), key=lambda item: item[0])
+    ]
+
+
+def remap_effect_animation_fields_on_card(card_core, old_value_to_label, new_label_to_value, new_options):
+    if not isinstance(card_core, dict):
+        return card_core
+
+    effects = card_core.get("effects")
+    if not isinstance(effects, list):
+        return card_core
+
+    updated_effects = []
+    changed = False
+
+    for effect in effects:
+        if not isinstance(effect, dict):
+            updated_effects.append(effect)
+            continue
+
+        updated_effect = deepcopy(effect)
+        try:
+            current_value = int(updated_effect.get("effectAnimationType"))
+        except (TypeError, ValueError):
+            current_value = None
+
+        mapped_label = old_value_to_label.get(current_value)
+        if mapped_label and mapped_label in new_label_to_value:
+            next_value = new_label_to_value[mapped_label]
+        else:
+            next_value = resolve_effect_animation_type(
+                updated_effect.get("type", 0),
+                None,
+                new_options,
+            )
+
+        if updated_effect.get("effectAnimationType") != next_value:
+            updated_effect["effectAnimationType"] = next_value
+            changed = True
+
+        updated_effects.append(updated_effect)
+
+    if not changed:
+        return card_core
+
+    updated_card_core = deepcopy(card_core)
+    updated_card_core["effects"] = updated_effects
+    return updated_card_core
+
+
+def remap_effect_animation_fields_on_document(document, old_value_to_label, new_label_to_value, new_options):
+    if isinstance(document, dict) and isinstance(document.get("card"), dict):
+        updated_card = remap_effect_animation_fields_on_card(
+            document["card"],
+            old_value_to_label,
+            new_label_to_value,
+            new_options,
+        )
+        if updated_card == document["card"]:
+            return document
+
+        updated_document = deepcopy(document)
+        updated_document["card"] = updated_card
+        return updated_document
+
+    return remap_effect_animation_fields_on_card(
+        document,
+        old_value_to_label,
+        new_label_to_value,
+        new_options,
+    )
+
+
+def migrate_effect_animation_references(old_options, new_options):
+    old_value_to_label = {
+        int(option.get("value")): str(option.get("label", "")).strip()
+        for option in old_options
+        if isinstance(option, dict) and str(option.get("label", "")).strip()
+    }
+    new_label_to_value = {
+        str(option.get("label", "")).strip(): int(option.get("value"))
+        for option in new_options
+        if isinstance(option, dict) and str(option.get("label", "")).strip()
+    }
+
+    for path in sorted(CARDS_DIR.glob("card_*.json")):
+        document = read_json_file(path)
+        updated_document = remap_effect_animation_fields_on_document(
+            document,
+            old_value_to_label,
+            new_label_to_value,
+            new_options,
+        )
+        if updated_document != document:
+            write_json_file(path, updated_document)
+
+    raw_deck_document = read_json_file(DECK_FILE)
+    if isinstance(raw_deck_document, list):
+        raw_cards = raw_deck_document
+    elif isinstance(raw_deck_document, dict) and isinstance(raw_deck_document.get("cards"), list):
+        raw_cards = raw_deck_document["cards"]
+    else:
+        raw_cards = []
+
+    updated_deck_cards = [
+        extract_card_core(
+            remap_effect_animation_fields_on_document(
+                card,
+                old_value_to_label,
+                new_label_to_value,
+                new_options,
+            )
+        )
+        for card in raw_cards
+    ]
+
+    if raw_cards != updated_deck_cards:
+        write_deck_file(DECK_FILE, updated_deck_cards)
+
+
 def normalize_point_cards_document(document):
     if not isinstance(document, dict):
         raise ValueError("PointCards.json must be a JSON object.")
@@ -655,11 +787,53 @@ def get_effect_animation_options():
         return jsonify(
             {
                 "options": load_effect_animation_options(),
+                "effectTypes": build_effect_type_options(),
                 "localPath": str(EFFECT_ANIMATION_OPTIONS_FILE),
             }
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:
-        return jsonify({"error": str(error), "localPath": str(EFFECT_ANIMATION_OPTIONS_FILE)}), 500
+        return jsonify(
+            {
+                "error": str(error),
+                "effectTypes": build_effect_type_options(),
+                "localPath": str(EFFECT_ANIMATION_OPTIONS_FILE),
+            }
+        ), 500
+
+
+@main_bp.post("/api/effect-animation-options")
+def save_effect_animation_options():
+    payload = request.get_json(silent=True) or {}
+    document = payload.get("document")
+    options = payload.get("options")
+
+    if document is None and options is not None:
+        document = {"options": options}
+
+    if document is None:
+        return jsonify({"error": "document is required."}), 400
+
+    try:
+        previous_document = load_effect_animation_options_document()
+        normalized_document = normalize_effect_animation_options_document(document)
+        write_effect_animation_options(EFFECT_ANIMATION_OPTIONS_FILE, normalized_document)
+        migrate_effect_animation_references(previous_document["options"], normalized_document["options"])
+        return jsonify(
+            {
+                "options": load_effect_animation_options(),
+                "effectTypes": build_effect_type_options(),
+                "localPath": str(EFFECT_ANIMATION_OPTIONS_FILE),
+                "message": "Effect animation options saved locally.",
+            }
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return jsonify(
+            {
+                "error": str(error),
+                "effectTypes": build_effect_type_options(),
+                "localPath": str(EFFECT_ANIMATION_OPTIONS_FILE),
+            }
+        ), 500
 
 
 @main_bp.get("/api/game-config")

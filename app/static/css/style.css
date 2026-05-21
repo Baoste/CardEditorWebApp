@@ -168,6 +168,185 @@ input {
     text-align: center;
 }
 
+.effect-animation-options-panel {
+    background: linear-gradient(180deg, rgba(255, 250, 244, 0.94), rgba(255, 255, 255, 0.76));
+}
+
+.effect-animation-options-grid {
+    display: grid;
+    gap: 0;
+}
+
+.effect-animation-options-head {
+    display: grid;
+    grid-template-columns: 72px minmax(180px, 220px) minmax(120px, 1fr) minmax(220px, 1.2fr) 116px;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 0 6px;
+    color: var(--muted);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.effect-animation-option-row {
+    display: grid;
+    grid-template-columns: 72px minmax(180px, 220px) minmax(120px, 1fr) minmax(220px, 1.2fr) 116px;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid rgba(92, 60, 29, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.74);
+}
+
+.effect-animation-option-row.is-flashing {
+    animation: effect-animation-row-flash 1.15s ease;
+}
+
+.effect-animation-option-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    padding: 4px 8px;
+    border: 1px solid rgba(181, 92, 43, 0.14);
+    border-radius: 999px;
+    background: rgba(181, 92, 43, 0.1);
+    color: var(--accent-strong);
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.effect-animation-option-label-preview {
+    display: block;
+    overflow-wrap: anywhere;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.effect-animation-option-select,
+.effect-animation-option-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid rgba(92, 60, 29, 0.16);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--text);
+}
+
+.effect-animation-option-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.effect-animation-option-move {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid rgba(92, 60, 29, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+}
+
+.effect-animation-option-move:hover:not(:disabled) {
+    background: rgba(181, 92, 43, 0.12);
+    border-color: rgba(181, 92, 43, 0.24);
+    transform: translateY(-1px);
+}
+
+.effect-animation-option-move:disabled {
+    opacity: 0.38;
+    cursor: default;
+}
+
+.effect-animation-option-delete {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid rgba(176, 58, 46, 0.16);
+    border-radius: 999px;
+    background: rgba(176, 58, 46, 0.08);
+    color: #a13329;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+}
+
+.effect-animation-option-delete:hover {
+    background: rgba(176, 58, 46, 0.16);
+    border-color: rgba(176, 58, 46, 0.26);
+    transform: translateY(-1px);
+}
+
+.effect-animation-insert-gap {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.effect-animation-insert-gap.is-empty {
+    margin-top: 16px;
+}
+
+.effect-animation-insert-line {
+    height: 1px;
+    background: rgba(92, 60, 29, 0.14);
+    transition: background 0.16s ease;
+}
+
+.effect-animation-insert-core {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: rgba(181, 92, 43, 0.08);
+    color: var(--accent-strong);
+    font-size: 0.95rem;
+    line-height: 1;
+    transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.effect-animation-insert-gap:hover .effect-animation-insert-line {
+    background: rgba(181, 92, 43, 0.36);
+}
+
+.effect-animation-insert-gap:hover .effect-animation-insert-core {
+    background: rgba(181, 92, 43, 0.16);
+    color: var(--accent-strong);
+    transform: scale(1.06);
+}
+
+@keyframes effect-animation-row-flash {
+    0% {
+        background: rgba(250, 218, 153, 0.78);
+        border-color: rgba(181, 92, 43, 0.28);
+        box-shadow: 0 0 0 0 rgba(181, 92, 43, 0.18);
+    }
+
+    100% {
+        background: rgba(255, 255, 255, 0.74);
+        border-color: rgba(92, 60, 29, 0.12);
+        box-shadow: 0 0 0 8px rgba(181, 92, 43, 0);
+    }
+}
+
 .config-editor-fields {
     align-items: start;
 }
@@ -1513,6 +1692,15 @@ input {
     .point-card-slider-row {
         grid-template-columns: 72px minmax(0, 1fr) 46px;
         gap: 10px;
+    }
+
+    .effect-animation-options-head,
+    .effect-animation-option-row {
+        grid-template-columns: 1fr;
+    }
+
+    .effect-animation-option-actions {
+        justify-content: flex-start;
     }
 
     .hover-preview {

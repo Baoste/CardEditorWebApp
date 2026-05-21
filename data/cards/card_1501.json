@@ -39,7 +39,8 @@
         "value": {
           "$type": "Game.Domain.ConstValue, Assembly-CSharp",
           "value": 2
-        }
+        },
+        "effectAnimationType": 10
       }
     ]
   }

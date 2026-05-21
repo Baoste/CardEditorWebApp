@@ -38,7 +38,8 @@
         },
         "value": {
           "$type": "Game.Domain.NoneValue, Assembly-CSharp"
-        }
+        },
+        "effectAnimationType": 6
       }
     ]
   }

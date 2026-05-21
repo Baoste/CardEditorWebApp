@@ -39,7 +39,8 @@
         },
         "value": {
           "$type": "Game.Domain.NoneValue, Assembly-CSharp"
-        }
+        },
+        "effectAnimationType": 2
       },
       {
         "type": 6,
@@ -79,7 +80,8 @@
         },
         "value": {
           "$type": "Game.Domain.NoneValue, Assembly-CSharp"
-        }
+        },
+        "effectAnimationType": 7
       },
       {
         "type": 1,
@@ -112,7 +114,8 @@
         "value": {
           "$type": "Game.Domain.ConstValue, Assembly-CSharp",
           "value": 2
-        }
+        },
+        "effectAnimationType": 1
       }
     ]
   }

@@ -10,6 +10,15 @@ const pointCardsState = {
     document: { cards: [] },
 };
 
+const effectAnimationOptionsState = {
+    localPath: "data/EffectAnimationOptions.json",
+    document: { options: [] },
+    effectTypes: [],
+    autosaveTimer: null,
+    flashIndex: null,
+    flashTimer: null,
+};
+
 const gameConfigElements = {
     structuredEditor: document.getElementById("game-config-structured-editor"),
     preview: document.getElementById("game-config-preview"),
@@ -32,6 +41,13 @@ const pointCardsElements = {
     saveButton: document.getElementById("point-cards-save-button"),
     fetchServerButton: document.getElementById("point-cards-fetch-server-button"),
     uploadServerButton: document.getElementById("point-cards-upload-server-button"),
+};
+
+const effectAnimationOptionsElements = {
+    structuredEditor: document.getElementById("effect-animation-options-structured-editor"),
+    preview: document.getElementById("effect-animation-options-preview"),
+    status: document.getElementById("effect-animation-options-status"),
+    localPath: document.getElementById("effect-animation-options-local-path"),
 };
 
 function formatJson(value) {
@@ -373,6 +389,327 @@ function readCurrentPointCardsDocument() {
     return cloneValue(pointCardsState.document);
 }
 
+function updateEffectAnimationOptionsPreview() {
+    effectAnimationOptionsElements.preview.textContent = formatJson(effectAnimationOptionsState.document);
+}
+
+function splitEffectAnimationLabel(label) {
+    const normalizedLabel = String(label || "").trim();
+    const separatorIndex = normalizedLabel.indexOf("_");
+
+    if (separatorIndex === -1) {
+        return {
+            effectTypeLabel: normalizedLabel,
+            animationName: "",
+        };
+    }
+
+    return {
+        effectTypeLabel: normalizedLabel.slice(0, separatorIndex),
+        animationName: normalizedLabel.slice(separatorIndex + 1),
+    };
+}
+
+function getEffectTypeLabelFromValue(value) {
+    const match = effectAnimationOptionsState.effectTypes.find((option) => Number(option.value) === Number(value));
+    return match ? match.label : "";
+}
+
+function getEffectTypeValueFromLabel(label) {
+    const match = effectAnimationOptionsState.effectTypes.find((option) => option.label === label);
+    return match ? Number(match.value) : null;
+}
+
+function composeEffectAnimationLabel(effectTypeValue, animationName) {
+    const effectTypeLabel = getEffectTypeLabelFromValue(effectTypeValue);
+    const normalizedAnimationName = String(animationName || "").trim();
+    return effectTypeLabel && normalizedAnimationName
+        ? `${effectTypeLabel}_${normalizedAnimationName}`
+        : effectTypeLabel;
+}
+
+function renumberEffectAnimationOptions() {
+    const options = Array.isArray(effectAnimationOptionsState.document?.options)
+        ? effectAnimationOptionsState.document.options
+        : [];
+
+    options.forEach((option, index) => {
+        option.value = index;
+    });
+}
+
+function renderEffectAnimationInsertGap(index, isEmpty = false) {
+    return `
+        <button
+            class="effect-animation-insert-gap ${isEmpty ? "is-empty" : ""}"
+            type="button"
+            data-effect-animation-insert="${index}"
+        >
+            <span class="effect-animation-insert-line"></span>
+            <span class="effect-animation-insert-core" aria-hidden="true">+</span>
+            <span class="effect-animation-insert-line"></span>
+        </button>
+    `;
+}
+
+function renderEffectAnimationOptionRow(option, index) {
+    const parsedLabel = splitEffectAnimationLabel(option.label);
+    const selectedEffectTypeValue = getEffectTypeValueFromLabel(parsedLabel.effectTypeLabel);
+    const fallbackEffectTypeValue = effectAnimationOptionsState.effectTypes[0]?.value ?? 0;
+    const effectTypeValue = selectedEffectTypeValue ?? fallbackEffectTypeValue;
+    const animationName = parsedLabel.animationName || (parsedLabel.effectTypeLabel ? "" : "Normal");
+    const composedLabel = composeEffectAnimationLabel(effectTypeValue, animationName);
+
+    return `
+        <section class="effect-animation-option-row ${effectAnimationOptionsState.flashIndex === index ? "is-flashing" : ""}" data-effect-animation-index="${index}">
+            <span class="effect-animation-option-badge">#${escapeHtml(option.value)}</span>
+            <select class="effect-animation-option-select" data-effect-animation-path="options.${index}.effectType">
+                ${effectAnimationOptionsState.effectTypes
+                    .map((effectType) => `
+                        <option value="${escapeHtml(effectType.value)}" ${Number(effectType.value) === Number(effectTypeValue) ? "selected" : ""}>
+                            ${escapeHtml(effectType.label)}
+                        </option>
+                    `)
+                    .join("")}
+            </select>
+            <input
+                class="effect-animation-option-input"
+                type="text"
+                data-effect-animation-path="options.${index}.animationName"
+                value="${escapeHtml(animationName)}"
+                placeholder="Normal"
+            >
+            <code class="effect-animation-option-label-preview">${escapeHtml(composedLabel)}</code>
+            <div class="effect-animation-option-actions">
+                <button
+                    class="effect-animation-option-move"
+                    type="button"
+                    data-effect-animation-move-up="${index}"
+                    title="上移"
+                    aria-label="上移"
+                    ${index === 0 ? "disabled" : ""}
+                >
+                    ↑
+                </button>
+                <button
+                    class="effect-animation-option-move"
+                    type="button"
+                    data-effect-animation-move-down="${index}"
+                    title="下移"
+                    aria-label="下移"
+                    ${index === effectAnimationOptionsState.document.options.length - 1 ? "disabled" : ""}
+                >
+                    ↓
+                </button>
+                <button
+                    class="effect-animation-option-delete"
+                    type="button"
+                    data-effect-animation-delete="${index}"
+                    title="删除这条动画"
+                    aria-label="删除这条动画"
+                >
+                    &times;
+                </button>
+            </div>
+        </section>
+    `;
+}
+
+function renderEffectAnimationOptionsEditor() {
+    const options = Array.isArray(effectAnimationOptionsState.document?.options)
+        ? effectAnimationOptionsState.document.options
+        : [];
+
+    if (!options.length) {
+        effectAnimationOptionsElements.structuredEditor.innerHTML = `
+            <div class="empty-state">
+                <strong>当前还没有动画选项</strong>
+                ${renderEffectAnimationInsertGap(0, true)}
+            </div>
+        `;
+        updateEffectAnimationOptionsPreview();
+        return;
+    }
+
+    effectAnimationOptionsElements.structuredEditor.innerHTML = `
+        <section class="builder-card-block effect-animation-options-panel">
+            <div class="panel-header point-cards-chart-header">
+                <div>
+                    <p class="panel-kicker">Animation Options</p>
+                    <h2>EffectType + 动画后缀</h2>
+                </div>
+                <div class="point-cards-chart-scale">保存时会写成 EffectType_动画名</div>
+            </div>
+            <div class="effect-animation-options-head">
+                <span>Value</span>
+                <span>Effect Type</span>
+                <span>Animation</span>
+                <span>最终名字</span>
+                <span></span>
+            </div>
+            <div class="effect-animation-options-grid">
+                ${options
+                    .map((option, index) => `
+                        ${renderEffectAnimationOptionRow(option, index)}
+                        ${renderEffectAnimationInsertGap(index + 1)}
+                    `)
+                    .join("")}
+            </div>
+        </section>
+    `;
+
+    updateEffectAnimationOptionsPreview();
+}
+
+function applyEffectAnimationOptionsDocument(response) {
+    effectAnimationOptionsState.localPath = response.localPath || effectAnimationOptionsState.localPath;
+
+    if (response.document !== undefined) {
+        effectAnimationOptionsState.document = cloneValue(response.document);
+    } else if (response.options !== undefined) {
+        effectAnimationOptionsState.document = { options: cloneValue(response.options) };
+    }
+
+    if (Array.isArray(response.effectTypes)) {
+        effectAnimationOptionsState.effectTypes = cloneValue(response.effectTypes);
+    }
+
+    effectAnimationOptionsElements.localPath.textContent = effectAnimationOptionsState.localPath;
+    renderEffectAnimationOptionsEditor();
+}
+
+function readCurrentEffectAnimationOptionsDocument() {
+    return cloneValue(effectAnimationOptionsState.document);
+}
+
+function updateEffectAnimationOptionAtIndex(index, changes) {
+    const option = effectAnimationOptionsState.document?.options?.[index];
+    if (!option) {
+        return;
+    }
+
+    const currentParts = splitEffectAnimationLabel(option.label);
+    const nextEffectTypeValue =
+        changes.effectTypeValue
+        ?? getEffectTypeValueFromLabel(currentParts.effectTypeLabel)
+        ?? effectAnimationOptionsState.effectTypes[0]?.value
+        ?? 0;
+    const nextAnimationName = changes.animationName ?? currentParts.animationName ?? "";
+
+    effectAnimationOptionsState.document.options[index] = {
+        value: Number(option.value),
+        label: composeEffectAnimationLabel(nextEffectTypeValue, nextAnimationName),
+    };
+}
+
+function insertEffectAnimationOption(index) {
+    const defaultEffectTypeValue = effectAnimationOptionsState.effectTypes[0]?.value ?? 0;
+    const nextOption = {
+        value: 0,
+        label: composeEffectAnimationLabel(defaultEffectTypeValue, "Normal"),
+    };
+
+    if (!Array.isArray(effectAnimationOptionsState.document.options)) {
+        effectAnimationOptionsState.document.options = [];
+    }
+
+    effectAnimationOptionsState.document.options.splice(index, 0, nextOption);
+    renumberEffectAnimationOptions();
+    flashEffectAnimationOption(index);
+    renderEffectAnimationOptionsEditor();
+}
+
+function moveEffectAnimationOption(fromIndex, direction) {
+    const options = effectAnimationOptionsState.document?.options;
+    if (!Array.isArray(options)) {
+        return;
+    }
+
+    const toIndex = fromIndex + direction;
+    if (toIndex < 0 || toIndex >= options.length) {
+        return;
+    }
+
+    const [movedOption] = options.splice(fromIndex, 1);
+    options.splice(toIndex, 0, movedOption);
+    renumberEffectAnimationOptions();
+    flashEffectAnimationOption(toIndex);
+    renderEffectAnimationOptionsEditor();
+}
+
+function flashEffectAnimationOption(index) {
+    effectAnimationOptionsState.flashIndex = index;
+    if (effectAnimationOptionsState.flashTimer) {
+        clearTimeout(effectAnimationOptionsState.flashTimer);
+    }
+
+    effectAnimationOptionsState.flashTimer = window.setTimeout(() => {
+        effectAnimationOptionsState.flashTimer = null;
+        effectAnimationOptionsState.flashIndex = null;
+        const rowNode = effectAnimationOptionsElements.structuredEditor.querySelector(
+            `[data-effect-animation-index="${index}"]`,
+        );
+        if (rowNode) {
+            rowNode.classList.remove("is-flashing");
+        }
+    }, 1200);
+}
+
+function updateEffectAnimationOptionRowPreview(index) {
+    const option = effectAnimationOptionsState.document?.options?.[index];
+    const previewNode = effectAnimationOptionsElements.structuredEditor.querySelector(
+        `[data-effect-animation-index="${index}"] .effect-animation-option-label-preview`,
+    );
+
+    if (!option || !previewNode) {
+        updateEffectAnimationOptionsPreview();
+        return;
+    }
+
+    previewNode.textContent = option.label;
+    updateEffectAnimationOptionsPreview();
+}
+
+async function loadLocalEffectAnimationOptions() {
+    setStatus(effectAnimationOptionsElements.status, "正在读取本地 EffectAnimationOptions.json ...");
+
+    try {
+        const response = await requestJson("/api/effect-animation-options");
+        applyEffectAnimationOptionsDocument(response);
+        setStatus(effectAnimationOptionsElements.status, "本地 EffectAnimationOptions.json 已载入");
+    } catch (error) {
+        setStatus(effectAnimationOptionsElements.status, error.message, true);
+    }
+}
+
+async function saveLocalEffectAnimationOptions() {
+    setStatus(effectAnimationOptionsElements.status, "正在保存本地 EffectAnimationOptions.json ...");
+
+    try {
+        renumberEffectAnimationOptions();
+        const response = await requestJson("/api/effect-animation-options", {
+            method: "POST",
+            body: JSON.stringify({ document: readCurrentEffectAnimationOptionsDocument() }),
+        });
+        applyEffectAnimationOptionsDocument(response);
+        setStatus(effectAnimationOptionsElements.status, "本地 EffectAnimationOptions.json 已保存");
+    } catch (error) {
+        setStatus(effectAnimationOptionsElements.status, error.message, true);
+    }
+}
+
+function scheduleEffectAnimationOptionsSave(delay = 360) {
+    if (effectAnimationOptionsState.autosaveTimer) {
+        clearTimeout(effectAnimationOptionsState.autosaveTimer);
+    }
+
+    setStatus(effectAnimationOptionsElements.status, "已修改，正在等待自动保存...");
+    effectAnimationOptionsState.autosaveTimer = window.setTimeout(() => {
+        effectAnimationOptionsState.autosaveTimer = null;
+        saveLocalEffectAnimationOptions();
+    }, delay);
+}
+
 async function loadLocalPointCards() {
     setStatus(pointCardsElements.status, "正在读取本地 PointCards.json ...");
 
@@ -541,6 +878,87 @@ pointCardsElements.structuredEditor.addEventListener("change", (event) => {
     }
 });
 
+effectAnimationOptionsElements.structuredEditor.addEventListener("input", (event) => {
+    const animationPath = event.target.dataset.effectAnimationPath;
+
+    if (!animationPath) {
+        return;
+    }
+
+    const index = Number(animationPath.split(".")[1]);
+    if (!Number.isInteger(index)) {
+        return;
+    }
+
+    if (animationPath.endsWith(".animationName")) {
+        updateEffectAnimationOptionAtIndex(index, { animationName: event.target.value });
+        updateEffectAnimationOptionRowPreview(index);
+        scheduleEffectAnimationOptionsSave();
+    }
+});
+
+effectAnimationOptionsElements.structuredEditor.addEventListener("change", (event) => {
+    const animationPath = event.target.dataset.effectAnimationPath;
+
+    if (!animationPath) {
+        return;
+    }
+
+    const index = Number(animationPath.split(".")[1]);
+    if (!Number.isInteger(index)) {
+        return;
+    }
+
+    if (animationPath.endsWith(".effectType")) {
+        updateEffectAnimationOptionAtIndex(index, { effectTypeValue: Number(event.target.value) });
+        updateEffectAnimationOptionRowPreview(index);
+        scheduleEffectAnimationOptionsSave();
+    }
+});
+
+effectAnimationOptionsElements.structuredEditor.addEventListener("click", (event) => {
+    const insertIndex = event.target.closest("[data-effect-animation-insert]")?.dataset.effectAnimationInsert;
+    if (insertIndex !== undefined) {
+        insertEffectAnimationOption(Number(insertIndex));
+        scheduleEffectAnimationOptionsSave(120);
+        return;
+    }
+
+    const moveUpIndex = event.target.closest("[data-effect-animation-move-up]")?.dataset.effectAnimationMoveUp;
+    if (moveUpIndex !== undefined) {
+        moveEffectAnimationOption(Number(moveUpIndex), -1);
+        scheduleEffectAnimationOptionsSave(120);
+        return;
+    }
+
+    const moveDownIndex = event.target.closest("[data-effect-animation-move-down]")?.dataset.effectAnimationMoveDown;
+    if (moveDownIndex !== undefined) {
+        moveEffectAnimationOption(Number(moveDownIndex), 1);
+        scheduleEffectAnimationOptionsSave(120);
+        return;
+    }
+
+    const deleteIndex = event.target.closest("[data-effect-animation-delete]")?.dataset.effectAnimationDelete;
+    if (deleteIndex === undefined) {
+        return;
+    }
+
+    const option = effectAnimationOptionsState.document?.options?.[Number(deleteIndex)];
+    if (!option) {
+        return;
+    }
+
+    const confirmed = window.confirm(`确认删除动画选项 ${option.label} 吗？`);
+    if (!confirmed) {
+        return;
+    }
+
+    effectAnimationOptionsState.document.options.splice(Number(deleteIndex), 1);
+    renumberEffectAnimationOptions();
+    renderEffectAnimationOptionsEditor();
+    scheduleEffectAnimationOptionsSave(120);
+});
+
 gameConfigElements.reloadButton.addEventListener("click", () => {
     loadLocalGameConfig();
 });
@@ -575,3 +993,10 @@ pointCardsElements.uploadServerButton.addEventListener("click", () => {
 
 loadLocalGameConfig();
 loadLocalPointCards();
+loadLocalEffectAnimationOptions();
+
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && !effectAnimationOptionsState.autosaveTimer) {
+        loadLocalEffectAnimationOptions();
+    }
+});
