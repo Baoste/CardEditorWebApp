@@ -56,13 +56,14 @@ const COMPARE_OP_OPTIONS = [
 ];
 
 const SELECTION_MODE_OPTIONS = ["None", "All", "Choose", "First", "Last", "Random", "Min", "Max"];
-const VALUE_EXPR_OPTIONS = ["NoneValue", "ConstValue", "VariableValue", "BinaryValue"];
+const VALUE_EXPR_OPTIONS = ["NoneValue", "ConstValue", "VariableValue", "RandomValue", "BinaryValue"];
 const CONDITION_EXPR_OPTIONS = ["NoneCondition", "AllCondition", "CompareCondition", "AndCondition", "OddEvenCondition"];
 
 const TYPE_NAMES = {
     NoneValue: "Game.Domain.NoneValue, Assembly-CSharp",
     ConstValue: "Game.Domain.ConstValue, Assembly-CSharp",
     VariableValue: "Game.Domain.VariableValue, Assembly-CSharp",
+    RandomValue: "Game.Domain.RandomValue, Assembly-CSharp",
     BinaryValue: "Game.Domain.BinaryValue, Assembly-CSharp",
     NoneCondition: "Game.Domain.NoneCondition, Assembly-CSharp",
     AllCondition: "Game.Domain.AllCondition, Assembly-CSharp",
@@ -189,6 +190,7 @@ function isPlainObject(value) {
 function createValueExpr(kind = "NoneValue") {
     if (kind === "ConstValue") return { "$type": TYPE_NAMES.ConstValue, value: 0 };
     if (kind === "VariableValue") return { "$type": TYPE_NAMES.VariableValue, source: 0 };
+    if (kind === "RandomValue") return { "$type": TYPE_NAMES.RandomValue, valueMin: 0, valueMax: 0 };
     if (kind === "BinaryValue") {
         return { "$type": TYPE_NAMES.BinaryValue, left: createValueExpr(), right: createValueExpr(), op: 0 };
     }
@@ -266,6 +268,7 @@ function detectValueExprKind(value) {
     const typeName = value?.["$type"] || "";
     if (typeName.includes("ConstValue")) return "ConstValue";
     if (typeName.includes("VariableValue")) return "VariableValue";
+    if (typeName.includes("RandomValue")) return "RandomValue";
     if (typeName.includes("BinaryValue")) return "BinaryValue";
     return "NoneValue";
 }
@@ -289,6 +292,13 @@ function ensureValueExpr(value) {
     const kind = detectValueExprKind(value);
     if (kind === "ConstValue") return { "$type": TYPE_NAMES.ConstValue, value: Number(value?.value ?? 0) };
     if (kind === "VariableValue") return { "$type": TYPE_NAMES.VariableValue, source: Number(value?.source ?? 0) };
+    if (kind === "RandomValue") {
+        return {
+            "$type": TYPE_NAMES.RandomValue,
+            valueMin: Number(value?.valueMin ?? value?.value0 ?? 0),
+            valueMax: Number(value?.valueMax ?? value?.value1 ?? 0),
+        };
+    }
     if (kind === "BinaryValue") return { "$type": TYPE_NAMES.BinaryValue, left: ensureValueExpr(value?.left), right: ensureValueExpr(value?.right), op: Number(value?.op ?? 0) };
     return { "$type": TYPE_NAMES.NoneValue };
 }
@@ -848,6 +858,7 @@ function renderValueExpr(value, path, title) {
     let body = `<div class="builder-static-note">No value</div>`;
     if (kind === "ConstValue") body = renderInput(`${path}.value`, "Value", value.value, "int", "number");
     if (kind === "VariableValue") body = `<label class="editor-field"><span>Source</span>${renderSelect(VALUE_SOURCE_OPTIONS, value.source ?? 0, `data-bind="${path}.source" data-kind="int"`)} </label>`;
+    if (kind === "RandomValue") body = `<div class="builder-nested-columns">${renderInput(`${path}.valueMin`, "Min", value.valueMin, "int", "number")}${renderInput(`${path}.valueMax`, "Max", value.valueMax, "int", "number")}</div>`;
     if (kind === "BinaryValue") body = `<label class="editor-field"><span>Op</span>${renderSelect(BINARY_OP_OPTIONS, value.op ?? 0, `data-bind="${path}.op" data-kind="int"`)} </label><div class="builder-nested-columns">${renderValueExpr(value.left, `${path}.left`, "Left")}${renderValueExpr(value.right, `${path}.right`, "Right")}</div>`;
     return `<section class="builder-nested-block"><h4 class="builder-section-heading">${escapeHtml(title)}</h4><label class="editor-field"><span>Value Type</span>${renderSelect(VALUE_EXPR_OPTIONS, kind, `data-value-path="${path}"`)}</label>${body}</section>`;
 }
